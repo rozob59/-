@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "Member": {
+      "title": "Member",
+      "description": "A member of the library.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "member"] },
+        "photoURL": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "A book in the library collection.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "isbn": { "type": "string" },
+        "available": { "type": "boolean" },
+        "description": { "type": "string" },
+        "coverURL": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["title", "author", "available"]
+    },
+    "BorrowRecord": {
+      "title": "Borrow Record",
+      "description": "A record of a book being borrowed.",
+      "type": "object",
+      "properties": {
+        "bookId": { "type": "string" },
+        "memberId": { "type": "string" },
+        "borrowDate": { "type": "string", "format": "date-time" },
+        "returnDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "returned"] }
+      },
+      "required": ["bookId", "memberId", "borrowDate", "status"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification sent to a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["userId", "title", "message", "createdAt", "read"]
+    }
+  },
+  "firestore": {
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "User profiles and roles."
+    },
+    "/books/{bookId}": {
+      "schema": "Book",
+      "description": "The library's book catalog."
+    },
+    "/borrows/{borrowId}": {
+      "schema": "BorrowRecord",
+      "description": "History of borrowed books."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Aide Library",
+  "description": "লাইব্রেরী ম্যানেজমেন্ট অ্যাপ। সদস্যদের লিস্ট, বইয়ের হিসেব এবং নোটিফিকেশন সিস্টেম সহ একটি পূর্ণাঙ্গ সমাধান।",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

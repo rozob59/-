@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+             get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin' ||
+             (request.auth.token.email == 'rozobali01321786059@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Validation Blueprints ---
+
+    function isValidMember(data) {
+      return data.keys().hasAll(['name', 'email', 'role']) && 
+             data.name is string && data.name.size() > 0 && 
+             data.email is string &&
+             data.role in ['admin', 'member'];
+    }
+
+    // --- Collections ---
+
+    // Members
+    match /members/{memberId} {
+      allow get: if isSignedIn() && (isOwner(memberId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && (
+        (isOwner(memberId) && isValidMember(request.resource.data) && (request.resource.data.role == 'member' || !exists(/databases/$(database)/documents/system/setup)))
+      );
+      allow update: if isSignedIn() && (
+        (isOwner(memberId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL'])) ||
+        isAdmin()
+      );
+    }
+
+    match /system/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && !exists(/databases/$(database)/documents/system/setup);
+    }
+
+    // Books
+    match /books/{bookId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Borrows
+    match /borrows/{borrowId} {
+      allow read: if isSignedIn() && (resource.data.memberId == request.auth.uid || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+  }
+}
