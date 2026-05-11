@@ -1488,7 +1488,7 @@ public class MainActivity extends Activity {
     </script>
 </body>
 </html>
-'''
+```
 
 ## **⚠️ অতি জরুরি কাজ (এইটা না করলে লগইন হবে না)**
 ফায়ারবেস সাইটে গিয়ে **Email/Password** অপশনটি চালু করতে হবে:
