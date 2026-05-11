@@ -1,7 +1,9 @@
-# এআইডিই (AIDE) মাস্টার কোড গাইড - সর্বশেষ আপডেট (Native Notification Fix)
-> **সর্বশেষ আপডেট:** ১১ মে ২০২৬ (বিকেল ৮:৫৯)
+# এআইডিই (AIDE) সম্পূর্ণ এবং চূড়ান্ত মাস্টার কোড গাইড
+> **সর্বশেষ আপডেট:** ১১ মে ২০২৬
 
-আপনার লগইন এরর ("Invalid action") এবং ফাইল নট ফাউন্ড ফিক্স করার জন্য নিচের কোডগুলো ব্যবহার করুন। আগের সব কোড ডিলিট করে এগুলো কপি-পেস্ট করুন।
+আপনার অ্যাপের লগইন সমস্যা, ফাইল আপলোড সমস্যা, রিমাইন্ডার ম্যানেজার, নোটিফিকেশন, বই ইস্যু তারিখ, এবং আগের সব ফিচার একত্রে মিলিয়ে এই **চূড়ান্ত কোডটি** তৈরি করা হয়েছে। 
+
+দয়া করে আপনার AIDE প্রজেক্টের আগের সব কোড ডিলিট করে নিচের কোডগুলো হুবহু কপি করে নির্দিষ্ট ফোল্ডারে পেস্ট করুন।
 
 ### **১. AndroidManifest.xml (সম্পূর্ণ কোড)**
 পাথ: `app/src/main/AndroidManifest.xml`
@@ -104,6 +106,8 @@ public class MainActivity extends Activity {
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
         webSettings.setAllowFileAccess(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
         webSettings.setAllowContentAccess(true);
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setUseWideViewPort(true);

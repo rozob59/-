@@ -119,36 +119,38 @@ public class LoginActivity extends Activity {
 ### ৪. মেইন অ্যাক্টিভিটি (File: MainActivity.java)
 পাথ: `app/src/main/java/com/gobdha/library/MainActivity.java`
 
+webview ব্যবহার করে HTML কোডটি চালানোর জন্য:
+
 ```java
 package com.gobdha.library;
 
 import android.os.Bundle;
 import android.app.Activity;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-import java.util.ArrayList;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
         
-        ListView listView = (ListView) findViewById(R.id.bookList);
+        WebView webView = new WebView(this);
+        setContentView(webView);
         
-        ArrayList<String> books = new ArrayList<>();
-        books.add("বই ১: পথের পাঁচালী - বিভূতিভূষণ");
-        books.add("বই ২: হিমু - হুমায়ূন আহমেদ");
-        books.add("বই ৩: আগুনের পরশমণি - হুমায়ূন আহমেদ");
-        books.add("বই ৪: বিষাদ সিন্ধু - মীর মোশাররফ হোসেন");
+        WebSettings webSettings = webView.getSettings();
+        // জাভাস্ক্রিপ্ট চালু করুন
+        webSettings.setJavaScriptEnabled(true);
+        // DOM Storage চালু করুন (ফায়ারবেস অথেন্টিকেশনের জন্য এটি খুবই জরুরি)
+        webSettings.setDomStorageEnabled(true);
+        // লোকাল ফাইল এক্সেস করার পারমিশন
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
+
+        webView.setWebViewClient(new WebViewClient());
         
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-            this, 
-            android.R.layout.simple_list_item_1, 
-            books
-        );
-        
-        listView.setAdapter(adapter);
+        // assets ফোল্ডার থেকে ফাইল লোড করুন
+        webView.loadUrl("file:///android_asset/index.html");
     }
 }
 ```
