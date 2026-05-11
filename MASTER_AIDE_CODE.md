@@ -716,7 +716,7 @@ public class MainActivity extends Activity {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, enableIndexedDbPersistence, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
         const firebaseConfig = {
@@ -734,6 +734,11 @@ public class MainActivity extends Activity {
         
         // ফায়ারস্টোর এনাবল করা
         const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+        
+        // অফলাইন ডেটা সেভ রাখার জন্য পারসিস্টেন্স
+        enableIndexedDbPersistence(db).catch(err => {
+            console.error("Offline Error:", err.code);
+        });
 
         let currentUser = null;
         let isRegistering = false;
@@ -1123,10 +1128,10 @@ public class MainActivity extends Activity {
             }
             container.innerHTML = list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map(n => `
                 <div class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500'}">
-                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick='showNotificationDetails("${n.title}", `${n.message.replace(/'/g, "\\'")}`)'>
+                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick='showNotificationDetails("${n.title}", "${n.message.replace(/"/g, "&quot;")}")'>
                         <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-6 h-6 text-teal-400"></i>
                     </div>
-                    <div class="flex-1 cursor-pointer" onclick='showNotificationDetails("${n.title}", `${n.message.replace(/'/g, "\\'")}`)'>
+                    <div class="flex-1 cursor-pointer" onclick='showNotificationDetails("${n.title}", "${n.message.replace(/"/g, "&quot;")}")'>
                         <div class="flex justify-between items-start mb-1">
                             <h5 class="font-bold text-white text-base">${n.title}</h5>
                             <span class="text-[10px] text-slate-500 font-medium">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
@@ -1430,7 +1435,7 @@ public class MainActivity extends Activity {
                         </span>
                     </td>
                     <td class="px-8 py-4">
-                        <button onclick="openNotifyModal('${m.id}', '${m.name}')" class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center hover:bg-teal-500 hover:text-slate-900 transition-all">
+                        <button onclick='openNotifyModal("${m.id}", "${(m.name || "").replace(/"/g, "&quot;")}")' class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center hover:bg-teal-500 hover:text-slate-900 transition-all">
                             <i data-lucide="send" class="w-4 h-4"></i>
                         </button>
                     </td>
