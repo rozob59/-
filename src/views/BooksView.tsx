@@ -13,6 +13,7 @@ export function BooksView() {
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [bookToBorrow, setBookToBorrow] = useState<Book | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'books'));
@@ -83,8 +84,8 @@ export function BooksView() {
                   ) : (
                     <BookOpen className="w-12 h-12 text-slate-700" />
                   )}
-                  <div className={`absolute top-4 right-4 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg ${book.available ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/20 text-rose-400 border border-rose-500/20'}`}>
-                    {book.available ? 'Available' : 'Borrowed'}
+                  <div className={`absolute top-4 right-4 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg ${book.available ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                    {book.available ? 'AVAILABLE' : 'BORROWED'}
                   </div>
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
@@ -93,8 +94,17 @@ export function BooksView() {
                   
                   <div className="mt-auto pt-4 border-t border-white/5 flex justify-between items-center">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{book.category || 'General'}</span>
-                    {profile?.role === 'admin' && (
+                    {profile?.role === 'admin' ? (
                       <button className="text-xs text-teal-400 font-bold hover:underline">এডিট করুন</button>
+                    ) : (
+                      profile && book.available && (
+                        <button 
+                          onClick={() => setBookToBorrow(book)}
+                          className="text-xs bg-teal-500 text-slate-900 px-4 py-1.5 rounded-lg font-bold hover:bg-teal-400 transition-all shadow-lg"
+                        >
+                          ধার নিন
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
@@ -105,6 +115,72 @@ export function BooksView() {
       )}
 
       {showAddModal && <AddBookModal onClose={() => setShowAddModal(false)} />}
+      {bookToBorrow && <BorrowBookModal book={bookToBorrow} onClose={() => setBookToBorrow(null)} />}
+    </div>
+  );
+}
+
+function BorrowBookModal({ book, onClose }: { book: Book, onClose: () => void }) {
+  const [dueDate, setDueDate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { profile } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile || !dueDate) return;
+    setLoading(true);
+    try {
+      await addDoc(collection(db, 'borrows'), {
+        bookId: book.id,
+        memberId: profile.id,
+        borrowDate: serverTimestamp(),
+        dueDate: new Date(dueDate),
+        status: 'active'
+      });
+      await updateDoc(doc(db, 'books', book.id), {
+        available: false
+      });
+      toast.success("বইটি সফলভাবে ধার নিয়েছেন!");
+      onClose();
+    } catch (error) {
+      toast.error("বই ধার নিতে সমস্যা হয়েছে!");
+      handleFirestoreError(error, OperationType.WRITE, 'borrows/books');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-slate-900/40 backdrop-blur-3xl rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-white/10"
+      >
+        <div className="p-6 border-b border-white/10 bg-white/5">
+          <h2 className="text-xl font-bold uppercase tracking-tight italic">বইটি ধার নিন: {book.title}</h2>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">ফেরত দেওয়ার তারিখ</label>
+            <input 
+              type="date"
+              required
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white rounded-2xl outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+            />
+          </div>
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-teal-500 text-slate-900 py-4 rounded-2xl font-bold hover:bg-teal-400 transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50"
+          >
+            {loading ? 'প্রক্রিয়াধীন...' : 'নিশ্চিত করুন'}
+          </button>
+        </form>
+      </motion.div>
     </div>
   );
 }

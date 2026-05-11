@@ -625,6 +625,17 @@ public class MainActivity extends Activity {
             </div>
         </div>
 
+        <div id="borrowBookModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
+                <button onclick="closeBorrowBookModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h3 id="borrowModalTitle" class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">বই ধার নিন</h3>
+                <div class="space-y-4">
+                    <input type="date" id="borrowDueDate" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white">
+                    <button id="confirmBorrowBtn" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">নিশ্চিত করুন</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Notify User Modal -->
         <div id="notifyUserModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
@@ -640,7 +651,66 @@ public class MainActivity extends Activity {
                 </div>
             </div>
         </div>
+
+        <!-- Notification Details Modal -->
+        <div id="notifDetailsModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
+                <button onclick="closeNotifDetailsModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h3 id="notifDetailsTitle" class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4"></h3>
+                <p id="notifDetailsMessage" class="text-slate-300 leading-relaxed"></p>
+            </div>
+        </div>
     </main>
+
+<script>
+        let currentBorrowBookId = null;
+
+        function closeBorrowBookModal() {
+            document.getElementById('borrowBookModal').classList.add('hidden');
+        }
+
+        function showNotificationDetails(title, message) {
+            document.getElementById('notifDetailsTitle').textContent = title;
+            document.getElementById('notifDetailsMessage').textContent = message;
+            document.getElementById('notifDetailsModal').classList.remove('hidden');
+        }
+        function closeNotifDetailsModal() {
+            document.getElementById('notifDetailsModal').classList.add('hidden');
+        }
+
+        async function confirmBorrowBook() {
+            const dueDateInput = document.getElementById('borrowDueDate').value;
+            if(!dueDateInput || !currentBorrowBookId) return showToast("তারিখ নির্বাচন করুন", "error");
+            
+            const dueDate = new Date(dueDateInput);
+            
+            const book = books.find(b => b.id === currentBorrowBookId);
+            if (!book) return showToast("বই খুঁজে পাওয়া যায়নি", "error");
+
+            const batch = writeBatch(db);
+            const bRef = doc(collection(db, 'borrows'));
+            batch.set(bRef, {
+                bookId: currentBorrowBookId,
+                bookTitle: book.title, 
+                memberId: currentUser.uid, 
+                memberName: currentUser.displayName,
+                borrowDate: serverTimestamp(), 
+                dueDate: Timestamp.fromDate(dueDate), 
+                status: 'active'
+            });
+            batch.update(doc(db, 'books', currentBorrowBookId), { available: false });
+            await batch.commit();
+            showToast("সফলভাবে বই রিযার্ভ করা হয়েছে!", "success");
+            loadBooks();
+            closeBorrowBookModal();
+        }
+        document.getElementById('confirmBorrowBtn').addEventListener('click', confirmBorrowBook);
+        
+        async function borrowBook(id) {
+            currentBorrowBookId = id;
+            document.getElementById('borrowBookModal').classList.remove('hidden');
+        }
+    </script>
 
     <!-- Custom Confirm Modal -->
     <div id="confirmModal">
@@ -1069,10 +1139,10 @@ public class MainActivity extends Activity {
             }
             container.innerHTML = list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map(n => `
                 <div class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500'}">
-                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick='showNotificationDetails("${n.title}", `${n.message.replace(/'/g, "\\'")}`)'>
                         <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-6 h-6 text-teal-400"></i>
                     </div>
-                    <div class="flex-1">
+                    <div class="flex-1 cursor-pointer" onclick='showNotificationDetails("${n.title}", `${n.message.replace(/'/g, "\\'")}`)'>
                         <div class="flex justify-between items-start mb-1">
                             <h5 class="font-bold text-white text-base">${n.title}</h5>
                             <span class="text-[10px] text-slate-500 font-medium">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
@@ -1426,26 +1496,8 @@ public class MainActivity extends Activity {
         }
 
         async function borrowBook(id) {
-            const book = books.find(b => b.id === id);
-            const now = new Date();
-            const dueDate = new Date(); 
-            dueDate.setDate(dueDate.getDate() + 14); // ২ সপ্তাহ সময়
-
-            const batch = writeBatch(db);
-            const bRef = doc(collection(db, 'borrows'));
-            batch.set(bRef, {
-                bookId: id, 
-                bookTitle: book.title, 
-                memberId: currentUser.uid, 
-                memberName: currentUser.displayName,
-                borrowDate: serverTimestamp(), 
-                dueDate: Timestamp.fromDate(dueDate), 
-                status: 'active'
-            });
-            batch.update(doc(db, 'books', id), { available: false });
-            await batch.commit();
-            showToast("সফলভাবে বই রিযার্ভ করা হয়েছে!", "success");
-            loadBooks();
+            currentBorrowBookId = id;
+            document.getElementById('borrowBookModal').classList.remove('hidden');
         }
 
         function showPage(id) {
@@ -1480,6 +1532,8 @@ public class MainActivity extends Activity {
         window.openNotifyModal = openNotifyModal;
         window.closeNotifyModal = closeNotifyModal;
         window.confirmSendNotification = confirmSendNotification;
+        window.closeNotifDetailsModal = closeNotifDetailsModal;
+        window.showNotificationDetails = showNotificationDetails;
         window.markAsRead = markAsRead;
         window.addNewBook = addNewBook;
         window.returnBook = returnBook;

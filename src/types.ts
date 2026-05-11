@@ -39,4 +39,5 @@ export interface AppNotification {
   message: string;
   createdAt: Date | Timestamp;
   read: boolean;
+  link?: string;
 }
