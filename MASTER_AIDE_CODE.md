@@ -527,7 +527,7 @@ public class MainActivity extends Activity {
         function previewCover(event) {
             const file = event.target.files[0];
             if (file) {
-                if(file.size > 1024 * 1024) return alert("ফাইল সাইজ ১ মেগাবাইটের কম হতে হবে");
+                if(file.size > 700 * 1024) return alert("ফাইল সাইজ ৭০০ কেবি এর কম হতে হবে");
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     selectedCoverBase64 = e.target.result;
@@ -538,21 +538,39 @@ public class MainActivity extends Activity {
         }
 
         async function addNewBook() {
-            const title = document.getElementById('newBookTitle').value;
-            const author = document.getElementById('newBookAuthor').value;
-            let coverURL = document.getElementById('newBookURL').value;
+            const btn = event?.currentTarget || document.querySelector('#addBookModal button[onclick="addNewBook()"]');
+            const title = document.getElementById('newBookTitle').value.trim();
+            const author = document.getElementById('newBookAuthor').value.trim();
+            let coverURL = document.getElementById('newBookURL').value.trim();
             
+            if(!title || !author) return alert("বইয়ের নাম এবং লেখকের নাম দিন");
             if(selectedCoverBase64) coverURL = selectedCoverBase64;
-            if(!title || !author) return alert("সব তথ্য দিন");
             
+            if(btn) btn.disabled = true;
             try {
-                await addDoc(collection(db, 'books'), { title, author, coverURL, available: true });
+                await addDoc(collection(db, 'books'), { 
+                    title, 
+                    author, 
+                    coverURL, 
+                    available: true,
+                    createdAt: serverTimestamp() 
+                });
                 closeAddBookModal();
                 alert("বই যোগ করা হয়েছে");
+                
+                // রিসেট ফরম
+                document.getElementById('newBookTitle').value = "";
+                document.getElementById('newBookAuthor').value = "";
+                document.getElementById('newBookURL').value = "";
                 selectedCoverBase64 = null;
                 document.getElementById('coverPreview').innerHTML = `<i data-lucide="camera" class="w-6 h-6 text-slate-500"></i><span class="text-[9px] uppercase font-bold text-slate-500 mt-1">ফটো আপলোড</span>`;
                 lucide.createIcons();
-            } catch(e) { alert(e.message); }
+            } catch(e) { 
+                console.error(e);
+                alert("সেভ করতে সমস্যা হয়েছে: " + e.message); 
+            } finally {
+                if(btn) btn.disabled = false;
+            }
         }
 
         async function returnBook(bid, bookId) {

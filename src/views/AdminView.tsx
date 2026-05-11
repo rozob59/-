@@ -202,20 +202,23 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
     title: '', author: '', isbn: '', category: '', description: '', coverURL: ''
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // 1MB limit for Firestore
-        alert("ফাইল সাইজ ১ মেগাবাইটের কম হতে হবে।");
+      if (file.size > 700 * 1024) { // Safer 700KB limit for Base64
+        alert("ফাইল সাইজ ৭০০ কেবি এর কম হতে হবে।");
         return;
       }
       const reader = new FileReader();
+      reader.onloadstart = () => setLoading(true);
       reader.onloadend = () => {
         const base64String = reader.result as string;
         setImagePreview(base64String);
         setFormData({ ...formData, coverURL: base64String });
+        setLoading(false);
       };
       reader.readAsDataURL(file);
     }
@@ -223,15 +226,22 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.title || !formData.author) {
+      setError("বইয়ের নাম এবং লেখকের নাম আবশ্যিক।");
+      return;
+    }
     setLoading(true);
+    setError(null);
     try {
       await addDoc(collection(db, 'books'), {
         ...formData,
         available: true,
+        createdAt: serverTimestamp()
       });
       onClose();
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'books');
+    } catch (err: any) {
+      console.error(err);
+      setError("বই সেভ করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);
     }
@@ -248,7 +258,12 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
           <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">নতুন বই যোগ করুন</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><XCircle className="w-8 h-8" /></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          {error && (
+            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-xs text-center">
+              {error}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 text-center">
                <label className="cursor-pointer group">
