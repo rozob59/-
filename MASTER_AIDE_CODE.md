@@ -289,6 +289,13 @@ public class MainActivity extends Activity {
             <p class="mt-4 text-teal-400 font-medium pulse">লোডিং হচ্ছে...</p>
         </div>
     </div>
+    <script>
+        // Safety check to hide loading overlay if something goes wrong
+        window.addEventListener('load', () => { setTimeout(() => {
+            const loader = document.getElementById('loadingOverlay');
+            if (loader && !loader.classList.contains('hidden')) loader.classList.add('hidden');
+        }, 5000); });
+    </script>
 
     <!-- Auth Guard -->
     <div id="authGuard" class="hidden fixed inset-0 z-[90] bg-slate-950 flex items-center justify-center p-4">
@@ -1487,7 +1494,9 @@ public class MainActivity extends Activity {
                     <h4 class="font-bold text-sm truncate">${b.title}</h4>
                     <p class="text-xs text-slate-500">${b.author}</p>
                     <div class="mt-auto pt-4 flex items-center justify-between">
-                        <span class="text-[10px] font-bold ${b.available ? 'text-teal-400' : 'text-rose-400'}">${b.available ? 'মজুদ' : 'ধার হয়েছে'}</span>
+                        <div class={`px-2 py-1 rounded-md text-[9px] font-bold uppercase ${b.available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                            ${b.available ? 'AVAILABLE' : 'BORROWED'}
+                        </div>
                         ${b.available ? `<button onclick="borrowBook('${b.id}')" class="text-teal-400 hover:scale-110"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>` : ''}
                     </div>
                 </div>
