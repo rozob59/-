@@ -1,75 +1,69 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 0. Global Safety Net
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // --- Helpers ---
+    
+    // --- HELPERS ---
     function isSignedIn() {
       return request.auth != null;
     }
-
+    
     function isAdmin() {
-      return isSignedIn() && (
-             get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin' ||
-             (request.auth.token.email == 'rozobali01321786059@gmail.com' && request.auth.token.email_verified == true)
-      );
+      return isSignedIn() && 
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin';
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function isOwner(memberId) {
+      return isSignedIn() && request.auth.uid == memberId;
     }
 
-    // --- Validation Blueprints ---
-
-    function isValidMember(data) {
-      return data.keys().hasAll(['name', 'email', 'role']) && 
-             data.name is string && data.name.size() > 0 && 
-             data.email is string &&
-             data.role in ['admin', 'member'];
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // --- Collections ---
+    // --- COLLECTIONS ---
 
-    // Members
     match /members/{memberId} {
-      allow get: if isSignedIn() && (isOwner(memberId) || isAdmin());
+      allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isSignedIn() && (
-        (isOwner(memberId) && isValidMember(request.resource.data) && (request.resource.data.role == 'member' || !exists(/databases/$(database)/documents/system/setup)))
-      );
-      allow update: if isSignedIn() && (
-        (isOwner(memberId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoURL'])) ||
-        isAdmin()
-      );
+      allow create: if isOwner(memberId) || isAdmin();
+      allow update: if isAdmin() || (isOwner(memberId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+      allow delete: if isAdmin();
     }
 
-    match /system/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && !exists(/databases/$(database)/documents/system/setup);
-    }
-
-    // Books
     match /books/{bookId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Borrows
     match /borrows/{borrowId} {
-      allow read: if isSignedIn() && (resource.data.memberId == request.auth.uid || isAdmin());
-      allow create: if isAdmin();
-      allow update: if isAdmin();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      
+      // Forces users to query by their own memberId
+      allow list: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      
+      allow create: if isSignedIn() 
+        && request.resource.data.memberId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/books/$(request.resource.data.bookId)).data.available == false;
+      
+      allow update: if isAdmin() || (
+        isSignedIn() 
+        && resource.data.memberId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'actualReturnDate'])
+        && getAfter(/databases/$(database)/documents/books/$(resource.data.bookId)).data.available == true
+      );
+      
+      allow delete: if isAdmin();
     }
 
-    // Notifications
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isAdmin();
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && 
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow write: if isAdmin();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

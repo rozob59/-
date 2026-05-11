@@ -286,20 +286,21 @@
 
     <script>
         // --- FIREBASE CONFIGURATION ---
-        // (Note: In a single file copy-paste mode, the user should provide these if running locally)
         const firebaseConfig = {
-            apiKey: "AIzaSy...", // AI Studio auto-injects keys if set in .env
-            authDomain: "gobdha-library.firebaseapp.com",
-            projectId: "gobdha-library",
-            storageBucket: "gobdha-library.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
+            projectId: "gen-lang-client-0912734577",
+            appId: "1:160731014169:web:07d3338880bd22292cf688",
+            apiKey: "AIzaSyCzPM4Sz6uYbYUvySJiW93K0JXy4KR8dNc",
+            authDomain: "gen-lang-client-0912734577.firebaseapp.com",
+            firestoreDatabaseId: "ai-studio-c7bfd590-d268-4c58-8f57-6d51cdd023c7",
+            storageBucket: "gen-lang-client-0912734577.firebasestorage.app",
+            messagingSenderId: "160731014169"
         };
 
         // Initialize Firebase Compat
         const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
-        const db = firebase.firestore();
+        // Use specific database ID if provided
+        const db = firebase.firestore(app, firebaseConfig.firestoreDatabaseId || undefined);
 
         // --- GLOBAL STATE ---
         let currentUser = null;
@@ -314,6 +315,9 @@
             document.getElementById(`page-${pageId}`).classList.remove('hidden');
             currentPage = pageId;
             window.scrollTo(0, 0);
+            if (pageId === 'books') renderBooks();
+            if (pageId === 'myBorrows') loadUserBorrows();
+            if (pageId === 'admin') loadAdminData();
         }
 
         function toggleMobileMenu() {
@@ -331,7 +335,7 @@
 
         function handleSignOut() {
             auth.signOut().then(() => {
-                location.reload(); // Simple state reset
+                location.reload(); 
             });
         }
 
@@ -359,7 +363,7 @@
                     await profileRef.set({
                         name: user.displayName,
                         email: user.email,
-                        photoURL: user.photoURL,
+                        photoURL: user.photoURL || '',
                         role: 'member',
                         joinedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
@@ -367,8 +371,11 @@
                     role = doc.data().role;
                 }
 
-                // If admin by email (override for user rozobali01321786059@gmail.com)
-                if (user.email === 'rozobali01321786059@gmail.com') role = 'admin';
+                // Admin check
+                if (user.email === 'rozobali01321786059@gmail.com') {
+                    if (role !== 'admin') await profileRef.update({ role: 'admin' });
+                    role = 'admin';
+                }
 
                 document.getElementById('userRole').textContent = role;
                 if (role === 'admin') {
@@ -385,7 +392,6 @@
                 document.getElementById('authNav').classList.add('hidden');
             }
             
-            // Hide loader
             setTimeout(() => {
                 loader.classList.add('opacity-0');
                 setTimeout(() => loader.classList.add('hidden'), 500);
@@ -401,14 +407,16 @@
             const snapshot = await db.collection('books').get();
             books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderBooks();
-            renderAdminBooks();
+            if (currentUser && document.getElementById('userRole').textContent === 'admin') {
+                renderAdminBooks();
+            }
         }
 
         async function loadUserBorrows() {
             if (!currentUser) return;
             const snapshot = await db.collection('borrows')
                 .where('memberId', '==', currentUser.uid)
-                .where('status', '==', 'borrowed')
+                .where('status', '==', 'active')
                 .get();
             
             const myBorrows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -423,7 +431,7 @@
             db.collection('members').onSnapshot(snap => {
                 document.getElementById('statTotalMembers').textContent = snap.size;
             });
-            db.collection('borrows').orderBy('borrowedAt', 'desc').onSnapshot(snap => {
+            db.collection('borrows').orderBy('borrowDate', 'desc').onSnapshot(snap => {
                 renderAdminBorrows(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             });
         }
@@ -435,12 +443,12 @@
             const term = document.getElementById('bookSearch').value.toLowerCase();
             
             grid.innerHTML = books.filter(b => 
-                b.title.toLowerCase().includes(term) || 
-                b.author.toLowerCase().includes(term)
+                (b.title || '').toLowerCase().includes(term) || 
+                (b.author || '').toLowerCase().includes(term)
             ).map(book => `
                 <div class="glass-panel p-4 rounded-3xl group hover:border-teal-500/30 transition-all flex flex-col h-full">
                     <div class="aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-slate-800 flex items-center justify-center">
-                        ${book.coverURL ? `<img src="${book.coverURL}" class="w-full h-full object-cover"/>` : `<i data-lucide="book" class="w-10 h-10 text-slate-700"></i>`}
+                        ${book.coverURL ? `<img src="${book.coverURL}" class="w-full h-full object-cover" referrerPolicy="no-referrer" />` : `<i data-lucide="book" class="w-10 h-10 text-slate-700"></i>`}
                     </div>
                     <div class="flex-1">
                         <span class="text-[10px] uppercase font-bold text-teal-400 tracking-wider">${book.category || 'অন্যান্য'}</span>
@@ -448,10 +456,10 @@
                         <p class="text-xs text-slate-500 mt-1">${book.author}</p>
                     </div>
                     <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-                        <span class="text-[10px] ${book.status === 'available' ? 'text-emerald-400' : 'text-rose-400'} font-bold">
-                            ${book.status === 'available' ? 'মজুদ আছে' : 'ধারি করা'}
+                        <span class="text-[10px] ${book.available ? 'text-emerald-400' : 'text-rose-400'} font-bold">
+                            ${book.available ? 'মজুদ আছে' : 'ধারি করা'}
                         </span>
-                        ${book.status === 'available' && currentUser ? `
+                        ${book.available && currentUser ? `
                             <button onclick="handleBorrow('${book.id}')" class="text-teal-400 hover:text-white"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
                         ` : ''}
                     </div>
@@ -473,8 +481,8 @@
                             <i data-lucide="book" class="w-6 h-6 text-slate-600"></i>
                         </div>
                         <div>
-                            <h4 class="font-bold">${item.bookTitle}</h4>
-                            <p class="text-xs text-rose-400 font-bold">ফেরত তারিখ: ${new Date(item.dueDate.toDate()).toLocaleDateString('bn-BD')}</p>
+                            <h4 class="font-bold">${item.bookTitle || 'অজানা বই'}</h4>
+                            <p class="text-xs text-rose-400 font-bold">ফেরত তারিখ: ${new Date(item.returnDate.toDate()).toLocaleDateString('bn-BD')}</p>
                         </div>
                     </div>
                     <button onclick="handleReturn('${item.id}', '${item.bookId}')" class="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">
@@ -497,8 +505,8 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
-                        <span class="text-[10px] px-2 py-0.5 rounded-full ${book.status === 'available' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'} font-bold">
-                            ${book.status === 'available' ? 'Available' : 'Borrowed'}
+                        <span class="text-[10px] px-2 py-0.5 rounded-full ${book.available ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'} font-bold">
+                            ${book.available ? 'Available' : 'Borrowed'}
                         </span>
                         <button onclick="handleDeleteBook('${book.id}')" class="text-slate-500 hover:text-rose-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
@@ -512,13 +520,13 @@
             container.innerHTML = items.map(item => `
                 <div class="glass-panel p-4 rounded-xl flex items-center justify-between border border-white/5">
                     <div>
-                        <p class="font-bold text-sm text-teal-400">${item.memberName}</p>
-                        <p class="text-[10px] text-white">বই: ${item.bookTitle}</p>
+                        <p class="font-bold text-sm text-teal-400">${item.memberName || 'অজানা'}</p>
+                        <p class="text-[10px] text-white">বই: ${item.bookTitle || 'অজানা'}</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-500">ফেরত: ${new Date(item.dueDate.toDate()).toLocaleDateString()}</p>
-                        <span class="text-[10px] font-bold ${item.status === 'borrowed' ? 'text-rose-400' : 'text-emerald-400'}">
-                            ${item.status === 'borrowed' ? 'ধারি করা' : 'ফেরত হয়েছে'}
+                        <p class="text-[10px] text-slate-500">ফেরত: ${new Date(item.returnDate.toDate()).toLocaleDateString()}</p>
+                        <span class="text-[10px] font-bold ${item.status === 'active' ? 'text-rose-400' : 'text-emerald-400'}">
+                            ${item.status === 'active' ? 'ধারি করা' : 'ফেরত হয়েছে'}
                         </span>
                     </div>
                 </div>
@@ -558,7 +566,9 @@
 
             await db.collection('books').add({
                 title, author, category, coverURL: cover,
-                status: 'available',
+                available: true,
+                description: '',
+                isbn: '',
                 addedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
@@ -579,8 +589,8 @@
             if (!currentUser) return handleSignIn();
             const book = books.find(b => b.id === bookId);
             
-            const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 14); // 2 weeks
+            const returnDate = new Date();
+            returnDate.setDate(returnDate.getDate() + 14); // 2 weeks
 
             try {
                 const batch = db.batch();
@@ -590,11 +600,11 @@
                     bookTitle: book.title,
                     memberId: currentUser.uid,
                     memberName: currentUser.displayName,
-                    borrowedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    dueDate: firebase.firestore.Timestamp.fromDate(dueDate),
-                    status: 'borrowed'
+                    borrowDate: firebase.firestore.FieldValue.serverTimestamp(),
+                    returnDate: firebase.firestore.Timestamp.fromDate(returnDate),
+                    status: 'active'
                 });
-                batch.update(db.collection('books').doc(bookId), { status: 'borrowed' });
+                batch.update(db.collection('books').doc(bookId), { available: false });
                 await batch.commit();
                 alert("Book borrowed successfully!");
                 loadBooks();
@@ -607,9 +617,9 @@
                 const batch = db.batch();
                 batch.update(db.collection('borrows').doc(borrowId), { 
                     status: 'returned', 
-                    returnedAt: firebase.firestore.FieldValue.serverTimestamp() 
+                    actualReturnDate: firebase.firestore.FieldValue.serverTimestamp() 
                 });
-                batch.update(db.collection('books').doc(bookId), { status: 'available' });
+                batch.update(db.collection('books').doc(bookId), { available: true });
                 await batch.commit();
                 alert("Book returned successfully!");
                 loadBooks();
@@ -622,7 +632,7 @@
             if (!currentUser) return;
             const snapshot = await db.collection('borrows')
                 .where('memberId', '==', currentUser.uid)
-                .where('status', '==', 'borrowed')
+                .where('status', '==', 'active')
                 .get();
             
             const now = new Date();
@@ -631,8 +641,7 @@
 
             let alertCount = 0;
             snapshot.docs.forEach(doc => {
-                const due = doc.data().dueDate.toDate();
-                // If due date is within the next 24 hours
+                const due = doc.data().returnDate.toDate();
                 if (due <= tomorrow && due >= now) {
                     alertCount++;
                     document.getElementById('dueNotificationDesc').textContent = `আপনার "${doc.data().bookTitle}" বইটি আগামীকাল ফেরত দেওয়ার শেষ দিন।`;
@@ -647,9 +656,7 @@
             }
         }
 
-        // Search Input listener
         document.getElementById('bookSearch').addEventListener('input', renderBooks);
-
     </script>
 </body>
 </html>
