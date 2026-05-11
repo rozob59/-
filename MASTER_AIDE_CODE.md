@@ -626,17 +626,6 @@ public class MainActivity extends Activity {
             </div>
         </div>
 
-        <div id="borrowBookModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
-                <button onclick="closeBorrowBookModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
-                <h3 id="borrowModalTitle" class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">বই ধার নিন</h3>
-                <div class="space-y-4">
-                    <input type="date" id="borrowDueDate" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white">
-                    <button id="confirmBorrowBtn" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">নিশ্চিত করুন</button>
-                </div>
-            </div>
-        </div>
-
         <!-- Notify User Modal -->
         <div id="notifyUserModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
@@ -677,39 +666,6 @@ public class MainActivity extends Activity {
         }
         function closeNotifDetailsModal() {
             document.getElementById('notifDetailsModal').classList.add('hidden');
-        }
-
-        async function confirmBorrowBook() {
-            const dueDateInput = document.getElementById('borrowDueDate').value;
-            if(!dueDateInput || !currentBorrowBookId) return showToast("তারিখ নির্বাচন করুন", "error");
-            
-            const dueDate = new Date(dueDateInput);
-            
-            const book = books.find(b => b.id === currentBorrowBookId);
-            if (!book) return showToast("বই খুঁজে পাওয়া যায়নি", "error");
-
-            const batch = writeBatch(db);
-            const bRef = doc(collection(db, 'borrows'));
-            batch.set(bRef, {
-                bookId: currentBorrowBookId,
-                bookTitle: book.title, 
-                memberId: currentUser.uid, 
-                memberName: currentUser.displayName,
-                borrowDate: serverTimestamp(), 
-                dueDate: Timestamp.fromDate(dueDate), 
-                status: 'active'
-            });
-            batch.update(doc(db, 'books', currentBorrowBookId), { available: false });
-            await batch.commit();
-            showToast("সফলভাবে বই রিযার্ভ করা হয়েছে!", "success");
-            loadBooks();
-            closeBorrowBookModal();
-        }
-        document.getElementById('confirmBorrowBtn').addEventListener('click', confirmBorrowBook);
-        
-        async function borrowBook(id) {
-            currentBorrowBookId = id;
-            document.getElementById('borrowBookModal').classList.remove('hidden');
         }
     </script>
 
