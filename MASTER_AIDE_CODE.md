@@ -868,13 +868,27 @@ public class MainActivity extends Activity {
             try {
                 // Get all notifications
                 const snap = await getDocs(collection(db, 'notifications'));
+                console.log("Notifications found to delete:", snap.docs.length);
+                
+                if (snap.docs.length === 0) {
+                  showToast("কোনো নোটিফিকেশন নেই।", "info");
+                  return;
+                }
+                
+                // Firestore batch limit is 500
                 const batch = writeBatch(db);
-                snap.docs.forEach(d => batch.delete(d.ref));
+                let count = 0;
+                snap.docs.forEach(d => {
+                    batch.delete(d.ref);
+                    count++;
+                });
+                
                 await batch.commit();
+                console.log("Deleted", count, "notifications.");
                 showToast("সব নোটিফিকেশন সফলভাবে মোছা হয়েছে!");
             } catch (e) {
-                console.error(e);
-                showToast("নোটিফিকেশনগুলো মুছতে সমস্যা হয়েছে।");
+                console.error("Error clearing notifications:", e);
+                showToast("নোটিফিকেশনগুলো মুছতে সমস্যা হয়েছে: " + (e instanceof Error ? e.message : String(e)));
             }
         }
 
