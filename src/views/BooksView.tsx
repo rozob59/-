@@ -83,9 +83,21 @@ export function BooksView() {
                   ) : (
                     <BookOpen className="w-12 h-12 text-slate-700" />
                   )}
-                  <div className={`absolute top-4 right-4 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg ${book.available ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                    {book.available ? 'AVAILABLE' : 'BORROWED'}
-                  </div>
+                  {(() => {
+                    const total = book.totalQuantity || 1;
+                    const borrowed = book.borrowedCount || (book.available === false ? 1 : 0);
+                    const isAvailable = (total - borrowed) > 0;
+                    return (
+                      <>
+                        <div className={`absolute top-4 left-4 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg bg-teal-500/20 text-teal-400 border border-teal-500/30 backdrop-blur`}>
+                          {total - borrowed}/{total} কপি
+                        </div>
+                        <div className={`absolute top-4 right-4 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg ${isAvailable ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'} backdrop-blur`}>
+                          {isAvailable ? 'AVAILABLE' : 'BORROWED'}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
                   <h3 className="font-bold text-white group-hover:text-teal-400 transition-colors line-clamp-1">{book.title}</h3>

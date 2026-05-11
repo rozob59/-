@@ -38,7 +38,11 @@ service cloud.firestore {
 
     match /books/{bookId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['borrowedCount', 'available'])
+      );
     }
 
     match /borrows/{borrowId} {

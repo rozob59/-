@@ -6,7 +6,7 @@ import { Member, Book, BorrowRecord } from '../types';
 import { useAuth } from '../App';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { Users, BookOpen, Send, UserPlus, CheckCircle, Clock, XCircle, Plus, Trash2 } from 'lucide-react';
+import { Users, BookOpen, Send, UserPlus, CheckCircle, Clock, XCircle, Plus, Trash2, Edit2 } from 'lucide-react';
 
 export function AdminView() {
   const { profile, loading: authLoading } = useAuth();
@@ -18,6 +18,8 @@ export function AdminView() {
   const [selectedUser, setSelectedUser] = useState<Member | null>(null);
   const [showIssue, setShowIssue] = useState(false);
   const [showAddBook, setShowAddBook] = useState(false);
+  const [showEditBook, setShowEditBook] = useState(false);
+  const [selectedBookForEdit, setSelectedBookForEdit] = useState<Book | null>(null);
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
@@ -227,8 +229,15 @@ export function AdminView() {
                             <button 
                               onClick={async () => {
                                 try {
+                                  const bookObj = books.find(b => b.id === borrow.bookId);
+                                  const newBorrowed = Math.max(0, (bookObj?.borrowedCount || (bookObj?.available === false ? 1 : 0)) - 1);
+                                  const total = bookObj?.totalQuantity || 1;
+                                  
                                   await updateDoc(doc(db, 'borrows', borrow.id), { status: 'returned', returnDate: serverTimestamp() });
-                                  await updateDoc(doc(db, 'books', borrow.bookId), { available: true });
+                                  await updateDoc(doc(db, 'books', borrow.bookId), { 
+                                    borrowedCount: newBorrowed,
+                                    available: (total - newBorrowed) > 0 
+                                  });
                                   toast.success("বইটি ফেরত নেওয়া হয়েছে!");
                                 } catch (e) {
                                   toast.error("বই ফেরত নিতে সমস্যা হয়েছে!");
@@ -294,7 +303,17 @@ export function AdminView() {
                         {book.available ? 'এভেইলেবল' : 'ধার হয়েছে'}
                       </span>
                     </td>
-                    <td className="px-8 py-5 text-right">
+                    <td className="px-8 py-5 text-right flex justify-end gap-2">
+                      <button 
+                        onClick={() => {
+                          setSelectedBookForEdit(book);
+                          setShowEditBook(true);
+                        }}
+                        className="w-10 h-10 rounded-xl bg-white/5 inline-flex items-center justify-center text-slate-400 hover:bg-teal-500 hover:text-slate-900 transition-all hover:scale-110 active:scale-95 shadow-lg"
+                        title="Edit Book"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                       <button 
                         onClick={async () => {
                           console.log("Delete button clicked for book:", book.id);
@@ -329,13 +348,14 @@ export function AdminView() {
       {showNotify && selectedUser && <NotifyUserModal user={selectedUser} onClose={() => setShowNotify(false)} />}
       {showIssue && <IssueBookModal books={books} members={members} onClose={() => setShowIssue(false)} />}
       {showAddBook && <AddBookModal onClose={() => setShowAddBook(false)} />}
+      {showEditBook && selectedBookForEdit && <EditBookModal book={selectedBookForEdit} onClose={() => setShowEditBook(false)} />}
     </div>
   );
 }
 
 function AddBookModal({ onClose }: { onClose: () => void }) {
   const [formData, setFormData] = useState({
-    title: '', author: '', isbn: '', category: '', description: '', coverURL: ''
+    title: '', author: '', isbn: '', category: '', description: '', coverURL: '', quantity: 1
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -371,6 +391,8 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
     try {
       const bookRef = await addDoc(collection(db, 'books'), {
         ...formData,
+        totalQuantity: formData.quantity,
+        borrowedCount: 0,
         available: true,
         createdAt: serverTimestamp()
       });
@@ -454,6 +476,15 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
               />
             </div>
+            <div>
+              <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">মোট কপি *</label>
+              <input 
+                required type="number" min="1"
+                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+                value={formData.quantity}
+                onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 1})}
+              />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">অথবা কভার ইমেজ URL</label>
@@ -480,6 +511,147 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function EditBookModal({ book, onClose }: { book: Book, onClose: () => void }) {
+  const [formData, setFormData] = useState({
+    title: book.title || '', author: book.author || '', isbn: book.isbn || '', category: book.category || '', description: book.description || '', coverURL: book.coverURL || '', quantity: book.totalQuantity || 1
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(book.coverURL || null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 700 * 1024) { // Safer 700KB limit for Base64
+        alert("ফাইল সাইজ ৭০০ কেবি এর কম হতে হবে।");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadstart = () => setLoading(true);
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImagePreview(base64String);
+        setFormData({ ...formData, coverURL: base64String });
+        setLoading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.author || formData.quantity < 1) {
+      setError("বইয়ের নাম, লেখকের নাম এবং মোট কপি আবশ্যিক।");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const borrowed = book.borrowedCount || (book.available === false ? 1 : 0);
+      const isAvailable = (formData.quantity - borrowed) > 0;
+      await updateDoc(doc(db, 'books', book.id!), {
+        ...formData,
+        totalQuantity: formData.quantity,
+        available: isAvailable
+      });
+      
+      toast.success("বইটি সফলভাবে আপডেট করা হয়েছে!");
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("বই আপডেট করতে সমস্যা হয়েছে!");
+      setError("বই আপডেট করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-slate-900/40 backdrop-blur-3xl rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl border border-white/10"
+      >
+        <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+          <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">বই আপডেট করুন</h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><XCircle className="w-8 h-8" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          {error && (
+            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-xs text-center">
+              {error}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 text-center">
+               <label className="cursor-pointer group">
+                  <div className="w-32 h-44 mx-auto rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-teal-500/50 transition-all overflow-hidden bg-white/5 relative">
+                    {imagePreview || formData.coverURL ? (
+                      <img src={imagePreview || formData.coverURL} className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <Plus className="w-8 h-8 text-slate-500 group-hover:text-teal-400" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">কভার আপলোড</span>
+                      </>
+                    )}
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+               </label>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">বইয়ের নাম *</label>
+              <input 
+                required
+                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">লেখক *</label>
+              <input 
+                required
+                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+                value={formData.author}
+                onChange={(e) => setFormData({...formData, author: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">মোট কপি *</label>
+              <input 
+                required type="number" min="1"
+                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+                value={formData.quantity}
+                onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 1})}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">অথবা কভার ইমেজ URL</label>
+            <input 
+              className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+              value={formData.coverURL}
+              onChange={(e) => {
+                setFormData({...formData, coverURL: e.target.value});
+                setImagePreview(null);
+              }}
+              placeholder="https://..."
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-teal-500 text-slate-900 py-4 rounded-2xl font-black hover:bg-teal-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-teal-500/40 uppercase tracking-widest"
+          >
+            {loading ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-900 border-t-transparent" /> : 'আপডেট করুন'}
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 function IssueBookModal({ books, members, onClose }: { books: Book[], members: Member[], onClose: () => void }) {
   const [selectedBook, setSelectedBook] = useState('');
   const [selectedMember, setSelectedMember] = useState('');
@@ -495,6 +667,11 @@ function IssueBookModal({ books, members, onClose }: { books: Book[], members: M
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 7); // Default 7 days
 
+      const bookObj = books.find(b => b.id === selectedBook);
+      const newBorrowed = (bookObj?.borrowedCount || (bookObj?.available === false ? 1 : 0)) + 1;
+      const total = bookObj?.totalQuantity || 1;
+      const isStillAvailable = (total - newBorrowed) > 0;
+
       await addDoc(collection(db, 'borrows'), {
         bookId: selectedBook,
         memberId: selectedMember,
@@ -503,7 +680,8 @@ function IssueBookModal({ books, members, onClose }: { books: Book[], members: M
         status: 'active'
       });
       await updateDoc(doc(db, 'books', selectedBook), {
-        available: false
+        borrowedCount: newBorrowed,
+        available: isStillAvailable
       });
       toast.success("বইটি সফলভাবে ইস্যু করা হয়েছে!");
       onClose();

@@ -610,6 +610,31 @@ public class MainActivity extends Activity {
             </div>
         </div>
 
+        <!-- Edit Book Modal -->
+        <div id="editBookModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-lg p-8 rounded-[2.5rem] relative">
+                <button onclick="closeEditBookModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h3 class="text-2xl font-bold mb-6 italic border-l-4 border-amber-500 pl-4">বই সম্পাদনা করুন</h3>
+                <div class="space-y-4">
+                    <input type="hidden" id="editBookId">
+                    <div class="flex flex-col items-center mb-4">
+                        <label class="cursor-pointer group flex flex-col items-center w-full">
+                            <div id="editCoverPreview" class="w-32 h-44 bg-white/5 border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center overflow-hidden relative transition-all hover:border-amber-500/50">
+                                <i data-lucide="camera" class="w-8 h-8 text-slate-500"></i>
+                                <span class="text-[10px] uppercase font-bold text-slate-500 mt-2">ফটো আপলোড</span>
+                            </div>
+                            <input type="file" id="editBookCoverFile" class="hidden" accept="image/*">
+                        </label>
+                    </div>
+                    <input id="editBookTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="বইয়ের নাম *">
+                    <input id="editBookAuthor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="লেখকের নাম *">
+                    <input id="editBookQuantity" type="number" min="1" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="মোট কপি *">
+                    <input id="editBookURL" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="অথবা ড্রপবক্স/গুগল ইমেজ লিংক">
+                    <button onclick="updateBook()" class="w-full bg-amber-500 text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl hover:bg-amber-400 transition-colors">বই আপডেট করুন</button>
+                </div>
+            </div>
+        </div>
+
         <div id="issueBookModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
                 <button onclick="closeIssueBookModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
@@ -717,7 +742,7 @@ public class MainActivity extends Activity {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, enableIndexedDbPersistence, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, enableIndexedDbPersistence, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
         const firebaseConfig = {
@@ -1076,7 +1101,7 @@ public class MainActivity extends Activity {
                         </span>
                     </td>
                     <td class="px-8 py-4">
-                        ${b.status === 'active' ? `<button onclick="returnBook('${b.id}', '${b.bookId}')" class="text-xs font-bold text-teal-400 hover:underline">ফেরত নিন</button>` : '<span class="text-slate-600">-</span>'}
+                        ${b.status === 'active' ? `<button onclick="returnBook('${b.id}', '${b.bookId}')" class="px-3 py-1 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 text-[10px] font-bold rounded-lg transition-colors border border-teal-500/20">ফেরত নিলাম</button>` : '<span class="text-slate-600">-</span>'}
                     </td>
                 </tr>
             `).join('');
@@ -1111,8 +1136,9 @@ public class MainActivity extends Activity {
                         <span class="text-[9px] font-bold uppercase tracking-widest ${b.status === 'active' ? 'text-amber-400' : 'text-emerald-400'}">
                             ${b.status === 'active' ? (isOverdue ? 'সময় শেষ' : 'চলমান') : 'সম্পন্ন'}
                         </span>
-                        <div class="flex gap-2">
+                        <div class="flex items-center gap-3">
                              <i data-lucide="${b.status === 'active' ? 'clock' : 'check-circle-2'}" class="w-4 h-4 ${b.status === 'active' ? (isOverdue ? 'text-rose-500' : 'text-amber-500') : 'text-emerald-500'}"></i>
+                             ${b.status === 'active' ? `<button onclick="returnBook('${b.id}', '${b.bookId}')" class="px-3 py-1 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 text-[10px] font-bold rounded-lg transition-colors border border-teal-500/20">ফেরত দিন</button>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1262,6 +1288,25 @@ public class MainActivity extends Activity {
                     reader.readAsDataURL(file);
                 }
             }
+            if(e.target && e.target.id === 'editBookCoverFile') {
+                const file = e.target.files[0];
+                if (file) {
+                    if(file.size > 800 * 1024) {
+                        showToast("ফাইল সাইজ ৮০০ কেবি এর কম হতে হবে", "error");
+                        e.target.value = '';
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        selectedEditCoverBase64 = event.target.result;
+                        const preview = document.getElementById('editCoverPreview');
+                        if(preview) {
+                            preview.innerHTML = `<img src="${selectedEditCoverBase64}" class="w-full h-full object-cover">`;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
         });
 
         async function addNewBook() {
@@ -1375,6 +1420,65 @@ public class MainActivity extends Activity {
 
         function openAddBookModal() { document.getElementById('addBookModal').classList.remove('hidden'); }
         function closeAddBookModal() { document.getElementById('addBookModal').classList.add('hidden'); }
+
+        let selectedEditCoverBase64 = null;
+        function openEditBookModal(id) {
+            const book = books.find(b => b.id === id);
+            if (!book) return;
+            document.getElementById('editBookId').value = book.id;
+            document.getElementById('editBookTitle').value = book.title;
+            document.getElementById('editBookAuthor').value = book.author;
+            document.getElementById('editBookQuantity').value = book.totalQuantity || 1;
+            document.getElementById('editBookURL').value = book.coverURL || '';
+            
+            selectedEditCoverBase64 = null;
+            const preview = document.getElementById('editCoverPreview');
+            if (book.coverURL) {
+                preview.innerHTML = `<img src="${book.coverURL}" class="w-full h-full object-cover">`;
+            } else {
+                preview.innerHTML = `<i data-lucide="camera" class="w-8 h-8 text-slate-500"></i><span class="text-[10px] uppercase font-bold text-slate-500 mt-2">ফটো আপলোড</span>`;
+                lucide.createIcons();
+            }
+            document.getElementById('editBookModal').classList.remove('hidden');
+        }
+        function closeEditBookModal() { document.getElementById('editBookModal').classList.add('hidden'); }
+
+        async function updateBook() {
+            const id = document.getElementById('editBookId').value;
+            const title = document.getElementById('editBookTitle').value.trim();
+            const author = document.getElementById('editBookAuthor').value.trim();
+            const quantity = parseInt(document.getElementById('editBookQuantity').value) || 1;
+            let coverURL = document.getElementById('editBookURL').value.trim();
+            
+            if(!title || !author || quantity < 1) {
+                showToast("দয়া করে বইয়ের নাম, লেখকের নাম এবং বইয়ের সংখ্যা সঠিকভাবে দিন।", "error");
+                return;
+            }
+
+            if(selectedEditCoverBase64) {
+                coverURL = selectedEditCoverBase64;
+            }
+
+            const book = books.find(b => b.id === id);
+            if (!book) return;
+            
+            t= book.borrowedCount || (book.available ? 0 : 1);
+            let available = quantity > t;
+
+            try {
+                await updateDoc(doc(db, 'books', id), {
+                    title: title,
+                    author: author,
+                    coverURL: coverURL,
+                    totalQuantity: quantity,
+                    available: available
+                });
+                showToast("বই সফলভাবে আপডেট করা হয়েছে", "success");
+                closeEditBookModal();
+            } catch (e) {
+                showToast("বই আপডেট করতে সমস্যা হয়েছে: " + e.message, "error");
+            }
+        }
 
         function openIssueBookModal() {
             const memberSelect = document.getElementById('issueMemberSelect');
@@ -1567,9 +1671,14 @@ public class MainActivity extends Activity {
                 return `
                 <div class="glass-panel p-4 rounded-3xl flex flex-col h-full fade-in relative group">
                     ${isAdmin ? `
-                        <button onclick="event.stopPropagation(); deleteBook('${b.id}')" class="absolute top-2 right-2 p-2 bg-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all z-20 shadow-lg">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
+                        <div class="absolute top-2 right-2 flex gap-2 z-20">
+                            <button onclick="event.stopPropagation(); openEditBookModal('${b.id}')" class="p-2 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-all shadow-lg">
+                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); deleteBook('${b.id}')" class="p-2 bg-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-lg">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     ` : ''}
                     <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden relative">
                         ${b.coverURL ? `<img src="${b.coverURL}" class="w-full h-full object-cover" />` : '<div class="w-full h-full flex items-center justify-center italic text-xs text-slate-600">No Image</div>'}
@@ -1625,6 +1734,9 @@ public class MainActivity extends Activity {
         window.showNotificationDetails = showNotificationDetails;
         window.markAsRead = markAsRead;
         window.addNewBook = addNewBook;
+        window.openEditBookModal = openEditBookModal;
+        window.closeEditBookModal = closeEditBookModal;
+        window.updateBook = updateBook;
         window.returnBook = returnBook;
         window.deleteBook = deleteBook;
         window.handleForgotPassword = handleForgotPassword;
