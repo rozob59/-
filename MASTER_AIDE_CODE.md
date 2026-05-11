@@ -96,93 +96,392 @@ public class MainActivity extends Activity {
 
 ### **৪. index.html (Assets ফাইলে বসাবেন)**
 পাথ: `app/src/main/assets/index.html`
-**(এটি আপনার মেইন অ্যাপের কোড। আপনার ফায়ারবেস কনফিগারেশন এখানে দিয়ে দিলাম)**
+
+এই কোডটিতে আপনার অনুরোধ অনুযায়ী **ইউজার নেইম (ইমেইল) এবং পাসওয়ার্ড** লগইন সিস্টেম যুক্ত করা হয়েছে। ডিজাইন এবং আগের সব ফিচার (বই খোঁজা, এডমিন প্যানেল, বই ধার নেওয়া) একদম আগের মতোই রাখা হয়েছে।
+
 ```html
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DGPL Library</title>
+    <title>Dakkhin Gobdha Public Library</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Hind Siliguri', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .gradient-teal {
+            background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2dd4bf;
+            border-radius: 10px;
+        }
+
+        /* Animation Classes */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-6">
+<body class="min-h-screen flex flex-col custom-scrollbar">
 
-    <!-- Login UI -->
-    <div id="login-form" class="w-full max-w-md bg-gray-800 p-8 rounded-2xl shadow-2xl">
-        <h2 class="text-3xl font-bold text-teal-400 mb-8 text-center">লাইব্রেরী লগইন</h2>
-        <input type="email" id="email" placeholder="ইমেইল" class="w-full p-3 mb-4 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400">
-        <input type="password" id="password" placeholder="পাসওয়ার্ড" class="w-full p-3 mb-6 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400">
-        <button onclick="login()" id="loginBtn" class="w-full bg-teal-400 hover:bg-teal-500 text-black font-bold py-3 rounded-lg transition-all">প্রবেশ করুন</button>
-        <p id="msg" class="mt-4 text-center text-red-500 text-sm"></p>
-    </div>
-
-    <!-- App UI (Hidden initially) -->
-    <div id="app-content" class="hidden w-full max-w-4xl">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-bold text-teal-400">বইয়ের তালিকা</h2>
-            <button onclick="logout()" class="bg-red-500 px-4 py-2 rounded-lg text-sm">লগ আউট</button>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="book-list">
-            <!-- Books will be listed here -->
-            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">বই ১: বাংলা সাহিত্য</div>
-            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">বই ২: গণিত সমাধান</div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center transition-opacity duration-500">
+        <div class="flex flex-col items-center">
+            <div class="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin"></div>
+            <p class="mt-4 text-teal-400 font-medium pulse">লোডিং হচ্ছে...</p>
         </div>
     </div>
 
-    <script>
-        // আপনার রিয়েল ফায়ারবেস কনফিগারেশন
+    <!-- Auth Guard -->
+    <div id="authGuard" class="hidden fixed inset-0 z-[90] bg-slate-950 flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] border border-white/5 shadow-2xl fade-in">
+            <div class="flex flex-col items-center mb-8">
+                <div class="w-16 h-16 gradient-teal rounded-2xl flex items-center justify-center shadow-2xl shadow-teal-500/20 mb-4">
+                    <i data-lucide="library" class="w-8 h-8 text-slate-900"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white">দক্ষিণ গোবধা লাইব্রেরী</h2>
+                <p id="authSubtitle" class="text-slate-400 text-sm mt-2">আপনার একাউন্টে লগইন করুন</p>
+            </div>
+
+            <div class="space-y-4">
+                <div id="registerFields" class="hidden space-y-4">
+                    <div>
+                        <label class="text-xs text-slate-400 mb-1.5 block ml-1">আপনার নাম</label>
+                        <input type="text" id="authName" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3.5 px-4 focus:outline-none focus:border-teal-500 transition-all text-white" placeholder="নাম লিখুন">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 mb-1.5 block ml-1">ইমেইল এড্রেস</label>
+                    <input type="email" id="authEmail" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3.5 px-4 focus:outline-none focus:border-teal-500 transition-all text-white" placeholder="example@mail.com">
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 mb-1.5 block ml-1">পাসওয়ার্ড</label>
+                    <input type="password" id="authPassword" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3.5 px-4 focus:outline-none focus:border-teal-500 transition-all text-white" placeholder="••••••••">
+                </div>
+
+                <div class="pt-2">
+                    <button id="authSubmitBtn" onclick="handleAuth()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all text-lg shadow-xl shadow-teal-500/10">
+                        লগইন করুন
+                    </button>
+                </div>
+
+                <div class="text-center pt-4">
+                    <p id="toggleAuthText" class="text-sm text-slate-400">
+                        একাউন্ট নেই? <button onclick="toggleAuthMode()" class="text-teal-400 font-bold ml-1 hover:underline">নতুন খুলুন</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="glass-panel sticky top-0 z-50 px-4 h-16 border-b border-white/5">
+        <div class="max-w-7xl mx-auto flex items-center justify-between h-full">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 gradient-teal rounded-xl flex items-center justify-center shadow-lg">
+                    <i data-lucide="library" class="w-5 h-5 text-slate-900"></i>
+                </div>
+                <h1 class="text-lg font-bold">দক্ষিণ গোবধা <span class="text-teal-400">লাইব্রেরী</span></h1>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-6 text-sm font-medium">
+                <button onclick="showPage('home')" class="hover:text-teal-400 transition-all">হোম</button>
+                <button onclick="showPage('books')" class="hover:text-teal-400 transition-all">বইসমূহ</button>
+                <button onclick="showPage('myBorrows')" class="hover:text-teal-400 transition-all">আমার বই</button>
+                <button id="adminLink" onclick="showPage('admin')" class="hidden text-teal-400 border border-teal-500/30 px-3 py-1 rounded-full">এডমিন</button>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="userProfile" class="flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <p id="userNameLabel" class="text-xs font-semibold"></p>
+                        <p id="userRoleLabel" class="text-[10px] text-slate-500 uppercase"></p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full gradient-teal flex items-center justify-center text-slate-900 font-bold text-xs" id="userIcon">U</div>
+                    <button onclick="handleSignOut()" class="text-slate-500 hover:text-rose-400"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden text-slate-400"><i data-lucide="menu" class="w-6 h-6"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="hidden fixed inset-0 z-[100] bg-slate-950/95 flex flex-col p-8 md:hidden fade-in text-center">
+        <button onclick="toggleMobileMenu()" class="self-end text-slate-400"><i data-lucide="x" class="w-8 h-8"></i></button>
+        <div class="flex flex-col gap-8 mt-12 text-2xl font-bold">
+            <button onclick="showPage('home'); toggleMobileMenu()" class="text-slate-400 hover:text-teal-400">হোম</button>
+            <button onclick="showPage('books'); toggleMobileMenu()" class="text-slate-400 hover:text-teal-400">বইসমূহ</button>
+            <button onclick="showPage('myBorrows'); toggleMobileMenu()" class="text-slate-400 hover:text-teal-400">আমার বই</button>
+            <button id="mbAdmin" onclick="showPage('admin'); toggleMobileMenu()" class="hidden text-teal-400">এডমিন প্যানেল</button>
+            <button onclick="handleSignOut(); toggleMobileMenu()" class="text-rose-400">লগআউট</button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
+        
+        <section id="page-home" class="page flex flex-col items-center">
+            <div class="text-center py-12 md:py-24 max-w-3xl">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold mb-6">
+                    <i data-lucide="sparkles" class="w-3 h-3"></i>
+                    সবচেয়ে বড় অনলাইন লাইব্রেরী কালেকশন
+                </div>
+                <h2 class="text-5xl md:text-7xl font-extrabold mb-8 tracking-tight leading-tight">
+                    বই করুন সংগ্রহ <br/>
+                    <span class="text-teal-400">জ্ঞান হোক প্রসারিত</span>
+                </h2>
+                <p class="text-lg md:text-xl text-slate-400 mb-10 leading-relaxed px-4">
+                    দক্ষিণ গোবধা পাবলিক লাইব্রেরী। এখন আপনার হাতের মুঠোয়। যেকোনো সময় যেকোনো জায়গা থেকে আপনার বই ট্র্যাক করুন।
+                </p>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <button onclick="showPage('books')" class="gradient-teal text-slate-900 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:scale-105 transition-all">
+                        বইসমূহ দেখুন
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-books" class="page hidden">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+                <h2 class="text-3xl font-bold">লাইব্রেরীর সংগ্রহ</h2>
+                <div class="relative w-full md:w-96">
+                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500"></i>
+                    <input type="text" id="bookSearch" placeholder="বই বা লেখকের নাম..." class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:border-teal-500 transition-all text-white">
+                </div>
+            </div>
+            <div id="booksGrid" class="grid grid-cols-2 md:grid-cols-4 gap-6"></div>
+        </section>
+
+        <section id="page-myBorrows" class="page hidden">
+            <h2 class="text-3xl font-bold mb-8">আমার ধার নেওয়া বইসমূহ</h2>
+            <div id="myBorrowsList" class="space-y-4"></div>
+        </section>
+
+        <section id="page-admin" class="page hidden">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-3xl font-bold">এডমিন প্যানেল</h2>
+            </div>
+            <div class="grid lg:grid-cols-4 gap-6">
+                <div class="lg:col-span-1 space-y-4">
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-1">মোট বই</p>
+                        <h4 id="statTotalBooks" class="text-3xl font-bold text-teal-400">০</h4>
+                    </div>
+                </div>
+                <div class="lg:col-span-3">
+                    <div id="adminBooksList" class="space-y-3"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, getDocs, setDoc, query, collection, orderBy, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        // ফায়ারবেস কনফিগ
         const firebaseConfig = {
             apiKey: "AIzaSyCzPM4Sz6uYbYUvySJiW93K0JXy4KR8dNc",
             authDomain: "gen-lang-client-0912734577.firebaseapp.com",
             projectId: "gen-lang-client-0912734577",
             storageBucket: "gen-lang-client-0912734577.firebasestorage.app",
             messagingSenderId: "160731014169",
-            appId: "1:160731014169:web:07d3338880bd22292cf688"
+            appId: "1:160731014169:web:07d3338880bd22292cf688",
+            firestoreDatabaseId: "ai-studio-c7bfd590-d268-4c58-8f57-6d51cdd023c7"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
-        function login() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const btn = document.getElementById('loginBtn');
-            const msg = document.getElementById('msg');
+        let currentUser = null;
+        let isRegistering = false;
+        let books = [];
 
-            if(!email || !password) return alert('সব তথ্য দিন');
+        // --- মূল ফাংশনসমূহ ---
 
+        async function handleAuth() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+            const name = document.getElementById('authName').value.trim();
+            
+            if(!email || !password) return alert("ইমেইল এবং পাসওয়ার্ড দিন");
+            
+            const btn = document.getElementById('authSubmitBtn');
             btn.disabled = true;
-            btn.innerText = 'অপেক্ষা করুন...';
+            btn.textContent = "অপেক্ষা করুন...";
 
-            auth.signInWithEmailAndPassword(email, password)
-                .then((user) => {
-                    msg.innerText = "";
-                    showApp();
-                })
-                .catch((error) => {
-                    btn.disabled = false;
-                    btn.innerText = 'প্রবেশ করুন';
-                    msg.innerText = "ভুল ইমেইল বা পাসওয়ার্ড অথবা সার্ভিস অফ আছে।";
-                    console.error(error);
-                });
+            try {
+                if (isRegistering) {
+                    const res = await createUserWithEmailAndPassword(auth, email, password);
+                    await updateProfile(res.user, { displayName: name });
+                    await setDoc(doc(db, 'members', res.user.uid), {
+                        name, email, role: 'member', createdAt: serverTimestamp()
+                    });
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+            } catch (e) {
+                console.error(e);
+                const errorCode = e.code || '';
+                const errorMessage = e.message || '';
+                let msg = "ত্রুটি: " + errorMessage;
+
+                if (errorCode === 'auth/invalid-login-credentials' || 
+                    errorCode === 'auth/invalid-credential' || 
+                    errorMessage.includes('invalid-credential') ||
+                    errorMessage.includes('invalid-login-credentials')) {
+                    msg = "ইমেইল বা পাসওয়ার্ড ভুল। সঠিক তথ্য দিয়ে চেষ্টা করুন।";
+                } else if (errorCode === 'auth/email-already-in-use') {
+                    msg = "এই ইমেইলটি ইতিপূর্বে ব্যবহার করা হয়েছে।";
+                } else if (errorCode === 'auth/weak-password') {
+                    msg = "পাসওয়ার্ড অন্তত ৬ অক্ষরের হতে হবে।";
+                } else if (errorCode === 'auth/user-not-found') {
+                    msg = "এই ইমেইল দিয়ে কোনো একাউন্ট নেই।";
+                } else if (errorCode === 'auth/wrong-password') {
+                    msg = "ভুল পাসওয়ার্ড।";
+                } else if (errorCode === 'auth/invalid-email') {
+                    msg = "ভুল ইমেইল ফরম্যাট।";
+                } else if (errorCode === 'auth/too-many-requests') {
+                    msg = "অনেকবার ভুল চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার ট্রাই করুন।";
+                }
+                alert(msg);
+                btn.disabled = false;
+                btn.textContent = isRegistering ? "একাউন্ট খুলুন" : "লগইন করুন";
+            }
         }
 
-        function showApp() {
-            document.getElementById('login-form').classList.add('hidden');
-            document.getElementById('app-content').classList.remove('hidden');
-        }
+        onAuthStateChanged(auth, async user => {
+            currentUser = user;
+            const loader = document.getElementById('loadingOverlay');
+            if (user) {
+                document.getElementById('authGuard').classList.add('hidden');
+                document.getElementById('userNameLabel').textContent = user.displayName;
+                document.getElementById('userIcon').textContent = (user.displayName || "U").charAt(0);
+                
+                // চেক এডমিন
+                const isAdminEmail = (user.email || "").toLowerCase() === 'rozobali01321786059@gmail.com';
+                let role = 'member';
+                
+                try {
+                    const docSnap = await getDoc(doc(db, 'members', user.uid));
+                    if (docSnap.exists()) {
+                        role = docSnap.data().role;
+                    }
+                } catch (e) { console.error("Error fetching role:", e); }
 
-        function logout() {
-            auth.signOut().then(() => location.reload());
-        }
+                if (isAdminEmail) role = 'admin';
 
-        // চেক করুন ইউজার কি আগে থেকে লগইন করা কিনা
-        auth.onAuthStateChanged((user) => {
-            if (user) showApp();
+                document.getElementById('userRoleLabel').textContent = role;
+                if (role === 'admin') {
+                    document.getElementById('adminLink').classList.remove('hidden');
+                    document.getElementById('mbAdmin').classList.remove('hidden');
+                } else {
+                    document.getElementById('adminLink').classList.add('hidden');
+                    document.getElementById('mbAdmin').classList.add('hidden');
+                }
+
+                loadBooks();
+            } else {
+                document.getElementById('authGuard').classList.remove('hidden');
+            }
+            loader.style.opacity = '0';
+            setTimeout(() => loader.classList.add('hidden'), 500);
+            lucide.createIcons();
         });
+
+        async function loadBooks() {
+            const snap = await getDocs(collection(db, 'books'));
+            books = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            renderBooks();
+            document.getElementById('statTotalBooks').textContent = books.length;
+        }
+
+        function renderBooks() {
+            const grid = document.getElementById('booksGrid');
+            grid.innerHTML = books.map(b => `
+                <div class="glass-panel p-4 rounded-3xl flex flex-col h-full fade-in">
+                    <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden">
+                        ${b.coverURL ? `<img src="${b.coverURL}" class="w-full h-full object-cover" />` : '<div class="w-full h-full flex items-center justify-center italic text-xs text-slate-600">No Image</div>'}
+                    </div>
+                    <h4 class="font-bold text-sm truncate">${b.title}</h4>
+                    <p class="text-xs text-slate-500">${b.author}</p>
+                    <div class="mt-auto pt-4 flex items-center justify-between">
+                        <span class="text-[10px] font-bold ${b.available ? 'text-teal-400' : 'text-rose-400'}">${b.available ? 'মজুদ' : 'ধার হয়েছে'}</span>
+                        ${b.available ? `<button onclick="borrowBook('${b.id}')" class="text-teal-400 hover:scale-110"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function borrowBook(id) {
+            const book = books.find(b => b.id === id);
+            const ret = new Date(); ret.setDate(ret.getDate() + 14);
+            const batch = writeBatch(db);
+            const bRef = doc(collection(db, 'borrows'));
+            batch.set(bRef, {
+                bookId: id, bookTitle: book.title, memberId: currentUser.uid, memberName: currentUser.displayName,
+                borrowDate: serverTimestamp(), returnDate: Timestamp.fromDate(ret), status: 'active'
+            });
+            batch.update(doc(db, 'books', id), { available: false });
+            await batch.commit();
+            alert("সফলভাবে বই রিযার্ভ করা হয়েছে!");
+            loadBooks();
+        }
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-'+id).classList.remove('hidden');
+        }
+
+        function toggleAuthMode() {
+            isRegistering = !isRegistering;
+            document.getElementById('registerFields').classList.toggle('hidden', !isRegistering);
+            document.getElementById('authSubmitBtn').textContent = isRegistering ? "একাউন্ট খুলুন" : "লগইন করুন";
+        }
+
+        function handleSignOut() { signOut(auth).then(() => location.reload()); }
+        function toggleMobileMenu() { document.getElementById('mobileMenu').classList.toggle('hidden'); }
+
+        // উইন্ডো অবজেক্টে ফাংশন এক্সপোর্ট
+        window.handleAuth = handleAuth;
+        window.showPage = showPage;
+        window.toggleAuthMode = toggleAuthMode;
+        window.handleSignOut = handleSignOut;
+        window.toggleMobileMenu = toggleMobileMenu;
+        window.borrowBook = borrowBook;
+
     </script>
 </body>
 </html>

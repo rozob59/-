@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   User, 
   onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signOut 
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -19,7 +20,6 @@ interface AuthContextType {
   user: User | null;
   profile: Member | null;
   loading: boolean;
-  signIn: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -40,56 +40,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             docSnap = await getDoc(docRef);
           } catch (e) {
-            handleFirestoreError(e, OperationType.GET, `members/${user.uid}`);
+            console.error("Profile fetch error:", e);
+            setLoading(false);
             return;
           }
 
+          const isAdminEmail = user.email?.toLowerCase() === 'rozobali01321786059@gmail.com';
           if (docSnap.exists()) {
             const data = docSnap.data();
-            const role = (user.email === 'rozobali01321786059@gmail.com') ? 'admin' : data.role;
+            const role = isAdminEmail ? 'admin' : data.role;
             setProfile({ id: docSnap.id, ...data, role } as Member);
+          } else if (isAdminEmail) {
+            // Pre-defined admin gets access even if profile doc is missing
+            setProfile({ 
+              id: user.uid, 
+              name: user.displayName || 'Admin', 
+              email: user.email || '', 
+              role: 'admin',
+              joinedAt: serverTimestamp() 
+            } as any);
           } else {
-            // Check if this is the first user
-            const setupRef = doc(db, 'system', 'setup');
-            let setupSnap;
-            try {
-              setupSnap = await getDoc(setupRef);
-            } catch (e) {
-              handleFirestoreError(e, OperationType.GET, 'system/setup');
-              return;
-            }
-            const isFirstUser = !setupSnap.exists();
-            
-            const newProfile = {
-              name: user.displayName || 'Anonymous',
-              email: user.email || '',
-              role: isFirstUser ? 'admin' : 'member',
-              photoURL: user.photoURL || '',
-              joinedAt: serverTimestamp(),
-            };
-
-            // If first user, create profile as admin FIRST to satisfy rules
-            try {
-              await setDoc(docRef, newProfile);
-            } catch (e) {
-              handleFirestoreError(e, OperationType.CREATE, `members/${user.uid}`);
-              return;
-            }
-
-            if (isFirstUser) {
-              try {
-                await setDoc(setupRef, { initialized: true });
-              } catch (e) {
-                handleFirestoreError(e, OperationType.CREATE, 'system/setup');
-              }
-            }
-
-            setProfile({ id: user.uid, ...newProfile } as any);
+            setProfile(null);
           }
         } catch (error) {
           console.error("Auth initialization error:", error);
-          // Only use handleFirestoreError if it's a Permission Denied error
-          // handleFirestoreError(error, OperationType.GET, 'auth_init');
         }
       } else {
         setProfile(null);
@@ -100,17 +74,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signIn = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
-
   const logout = async () => {
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -143,91 +112,245 @@ import {
 
 // Components (Inlined for simplicity in this turn, can be moved to files if they grow)
 function Navbar() {
-  const { profile, logout, signIn } = useAuth();
+  const { profile, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
-    <nav className="bg-white/5 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center gap-2 text-white font-bold text-xl">
-              <div className="w-8 h-8 bg-teal-400 rounded-lg flex items-center justify-center shadow-lg shadow-teal-500/20">
-                <Library className="w-5 h-5 text-slate-900" />
+    <>
+      <nav className="bg-white/5 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Link to="/" className="flex items-center gap-2 text-white font-bold text-xl">
+                <div className="w-8 h-8 bg-teal-400 rounded-lg flex items-center justify-center shadow-lg shadow-teal-500/20">
+                  <Library className="w-5 h-5 text-slate-900" />
+                </div>
+                <span className="hidden lg:inline text-lg">দক্ষিণ গোবধা <span className="text-teal-400">পাবলিক লাইব্রেরী</span></span>
+                <span className="lg:hidden text-lg">DG <span className="text-teal-400">Library</span></span>
+              </Link>
+              <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
+                <Link to="/books" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">বইসমূহ</Link>
+                {profile && (
+                  <>
+                    <Link to="/my-borrows" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">আমার বই</Link>
+                    <Link to="/notifications" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">নোটিফিকেশন</Link>
+                    {profile.role === 'admin' && (
+                      <Link to="/admin" className="text-teal-400 font-semibold px-3 py-2 text-sm font-medium decoration-2 underline-offset-4 underline">এডমিন প্যানেল</Link>
+                    )}
+                  </>
+                )}
               </div>
-              <span className="hidden lg:inline text-lg">দক্ষিণ গোবধা <span className="text-teal-400">পাবলিক লাইব্রেরী</span></span>
-              <span className="lg:hidden text-lg">DG <span className="text-teal-400">Library</span></span>
-            </Link>
-            <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
-              <Link to="/books" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">বইসমূহ</Link>
-              {profile && (
-                <>
-                  <Link to="/my-borrows" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">আমার বই</Link>
-                  <Link to="/notifications" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">নোটিফিকেশন</Link>
-                  {profile.role === 'admin' && (
-                    <Link to="/admin" className="text-teal-400 font-semibold px-3 py-2 text-sm font-medium decoration-2 underline-offset-4 underline">এডমিন প্যানেল</Link>
-                  )}
-                </>
+            </div>
+            <div className="hidden sm:flex sm:items-center sm:ml-6 gap-4">
+              {profile ? (
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-white">{profile.name}</p>
+                    <p className="text-[10px] text-slate-400 capitalize">{profile.role}</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center bg-white/5 text-teal-400 font-bold text-xs">
+                    {profile.name?.charAt(0) || 'U'}
+                  </div>
+                  <button onClick={logout} className="text-slate-500 hover:text-red-400 transition-colors">
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setIsAuthModalOpen(true)} 
+                  className="flex items-center gap-2 bg-teal-500 text-slate-900 px-4 py-2 rounded-lg text-sm font-bold hover:bg-teal-400 transition-all shadow-lg shadow-teal-500/20"
+                >
+                  <LogIn className="w-4 h-4" />
+                  লগইন করুন
+                </button>
               )}
             </div>
-          </div>
-          <div className="hidden sm:flex sm:items-center sm:ml-6 gap-4">
-            {profile ? (
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-xs font-medium text-white">{profile.name}</p>
-                  <p className="text-[10px] text-slate-400 capitalize">{profile.role}</p>
-                </div>
-                {profile.photoURL && (
-                  <img src={profile.photoURL} alt={profile.name} className="w-8 h-8 rounded-full border border-white/10" />
-                )}
-                <button onClick={logout} className="text-slate-500 hover:text-red-400 transition-colors">
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <button onClick={signIn} className="flex items-center gap-2 bg-teal-500 text-slate-900 px-4 py-2 rounded-lg text-sm font-bold hover:bg-teal-400 transition-all shadow-lg shadow-teal-500/20">
-                <LogIn className="w-4 h-4" />
-                লগইন করুন
+            <div className="flex items-center sm:hidden">
+              <button onClick={() => setIsOpen(!isOpen)} className="text-slate-400">
+                {isOpen ? <X /> : <Menu />}
               </button>
-            )}
-          </div>
-          <div className="flex items-center sm:hidden">
-            <button onClick={() => setIsOpen(!isOpen)} className="text-slate-400">
-              {isOpen ? <X /> : <Menu />}
-            </button>
+            </div>
           </div>
         </div>
-      </div>
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="sm:hidden bg-slate-900/95 backdrop-blur-xl border-b border-white/10"
-          >
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <Link to="/books" className="block px-3 py-2 text-base font-medium text-slate-300" onClick={() => setIsOpen(false)}>বইসমূহ</Link>
-              {profile && (
-                <>
-                  <Link to="/my-borrows" className="block px-3 py-2 text-base font-medium text-slate-300" onClick={() => setIsOpen(false)}>আমার বই</Link>
-                  <Link to="/notifications" className="block px-3 py-2 text-base font-medium text-slate-300" onClick={() => setIsOpen(false)}>নোটিফিকেশন</Link>
-                  {profile.role === 'admin' && (
-                    <Link to="/admin" className="block px-3 py-2 text-base font-medium text-teal-400" onClick={() => setIsOpen(false)}>এডমিন প্যানেল</Link>
-                  )}
-                  <button onClick={logout} className="w-full text-left px-3 py-2 text-base font-medium text-red-400">লগআউট</button>
-                </>
-              )}
-              {!profile && (
-                <button onClick={() => { signIn(); setIsOpen(false); }} className="w-full text-left px-3 py-2 text-base font-medium text-teal-400">লগইন</button>
-              )}
+        {/* Mobile menu */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="sm:hidden bg-slate-900/95 backdrop-blur-xl border-b border-white/10"
+            >
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                <Link to="/books" className="block px-3 py-2 text-base font-medium text-slate-300" onClick={() => setIsOpen(false)}>বইসমূহ</Link>
+                {profile && (
+                  <>
+                    <Link to="/my-borrows" className="block px-3 py-2 text-base font-medium text-slate-300" onClick={() => setIsOpen(false)}>আমার বই</Link>
+                    <Link to="/notifications" className="block px-3 py-2 text-base font-medium text-slate-300" onClick={() => setIsOpen(false)}>নোটিফিকেশন</Link>
+                    {profile.role === 'admin' && (
+                      <Link to="/admin" className="block px-3 py-2 text-base font-medium text-teal-400" onClick={() => setIsOpen(false)}>এডমিন প্যানেল</Link>
+                    )}
+                    <button onClick={logout} className="w-full text-left px-3 py-2 text-base font-medium text-red-400">লগআউট</button>
+                  </>
+                )}
+                {!profile && (
+                  <button onClick={() => { setIsAuthModalOpen(true); setIsOpen(false); }} className="w-full text-left px-3 py-2 text-base font-medium text-teal-400">লগইন</button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+    </>
+  );
+}
+
+function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+  const [isRegister, setIsRegister] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isRegister) {
+        if (!name) throw new Error('আপনার নাম দিন');
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName: name });
+        
+        // Create profile
+        const setupRef = doc(db, 'system', 'setup');
+        const setupSnap = await getDoc(setupRef);
+        const isFirstUser = !setupSnap.exists();
+
+        const newProfile = {
+          name,
+          email,
+          role: isFirstUser ? 'admin' : 'member',
+          photoURL: '',
+          joinedAt: serverTimestamp(),
+        };
+
+        await setDoc(doc(db, 'members', userCredential.user.uid), newProfile);
+        if (isFirstUser) await setDoc(setupRef, { initialized: true });
+        
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      const errorCode = err.code || '';
+      const errorMessage = err.message || '';
+      
+      if (errorCode === 'auth/invalid-login-credentials' || 
+          errorCode === 'auth/invalid-credential' || 
+          errorMessage.includes('invalid-credential') ||
+          errorMessage.includes('invalid-login-credentials')) {
+        setError('ইমেইল বা পাসওয়ার্ড ভুল। সঠিক তথ্য দিন।');
+      } else if (errorCode === 'auth/email-already-in-use') {
+        setError('এই ইমেইলটি ইতিপূর্বে ব্যবহার করা হয়েছে। অন্য ইমেইল ব্যবহার করুন।');
+      } else if (errorCode === 'auth/weak-password') {
+        setError('পাসওয়ার্ড অত্যন্ত দুর্বল। অন্তত ৬ অক্ষরের বা আরও কঠিন পাসওয়ার্ড দিন।');
+      } else if (errorCode === 'auth/user-not-found') {
+        setError('এই ইমেইল দিয়ে কোনো একাউন্ট পাওয়া যায়নি। অনুগ্রহ করে নতুন একাউন্ট খুলুন।');
+      } else if (errorCode === 'auth/wrong-password') {
+        setError('ভুল পাসওয়ার্ড দিয়েছেন। সঠিক পাসওয়ার্ড দিয়ে চেষ্টা করুন।');
+      } else if (errorCode === 'auth/invalid-email') {
+        setError('ইমেইল ফরম্যাট সঠিক নয়। সঠিক ইমেইল এড্রেস দিন।');
+      } else if (errorCode === 'auth/too-many-requests') {
+        setError('অনেকবার ভুল চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।');
+      } else {
+        setError('একটি সমস্যা হয়েছে। দয়া করে আপনার ইন্টারনেট কানেকশন চেক করুন এবং আবার চেষ্টা করুন।');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="glass-panel p-8 w-full max-w-md rounded-[2.5rem] border border-white/20 relative"
+      >
+        <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-white">
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-white mb-2">
+            {isRegister ? 'নতুন একাউন্ট খুলুন' : 'লগইন করুন'}
+          </h2>
+          <p className="text-sm text-slate-400">
+            দক্ষিণ গোবধা পাবলিক লাইব্রেরী ফ্যামিলিতে স্বাগতম
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {isRegister && (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 ml-1">আপনার নাম</label>
+              <input
+                type="text" required
+                value={name} onChange={e => setName(e.target.value)}
+                placeholder="যেমন: আবরার রহমান"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+              />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 ml-1">ইমেইল এড্রেস</label>
+            <input
+              type="email" required
+              value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="example@mail.com"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 ml-1">পাসওয়ার্ড</label>
+            <input
+              type="password" required
+              value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+            />
+          </div>
+
+          {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+
+          <button
+            type="submit" disabled={loading}
+            className="w-full bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold py-4 rounded-2xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 mt-4"
+          >
+            {loading ? 'অপেক্ষা করুন...' : (isRegister ? 'একাউন্ট তৈরী করুন' : 'লগইন করুন')}
+          </button>
+        </form>
+
+        <p className="mt-8 text-center text-sm text-slate-400">
+          {isRegister ? 'ইতিপূর্বে একাউন্ট আছে?' : 'লাইব্রেরীতে নতুন?'}{' '}
+          <button 
+            type="button" onClick={() => setIsRegister(!isRegister)}
+            className="text-teal-400 font-bold hover:underline"
+          >
+            {isRegister ? 'লগইন করুন' : 'নতুন একাউন্ট খুলুন'}
+          </button>
+        </p>
+      </motion.div>
+    </div>
   );
 }
 

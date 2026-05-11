@@ -8,8 +8,10 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && 
-        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/members/$(request.auth.uid)) && get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin') ||
+        request.auth.token.email == 'rozobali01321786059@gmail.com'
+      );
     }
 
     function isOwner(memberId) {
@@ -21,6 +23,10 @@ service cloud.firestore {
     }
 
     // --- COLLECTIONS ---
+
+    match /test/connection {
+      allow read: if true;
+    }
 
     match /members/{memberId} {
       allow get: if isSignedIn();
