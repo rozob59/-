@@ -1447,16 +1447,11 @@ public class MainActivity extends Activity {
                         <div class={`px-2 py-1 rounded-md text-[9px] font-bold uppercase ${b.available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                             ${b.available ? 'AVAILABLE' : 'BORROWED'}
                         </div>
-                        ${b.available ? `<button onclick="borrowBook('${b.id}')" class="text-teal-400 hover:scale-110"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>` : ''}
+                        ${b.available ? `` : ''}
                     </div>
                 </div>
             `).join('');
             lucide.createIcons();
-        }
-
-        async function borrowBook(id) {
-            currentBorrowBookId = id;
-            document.getElementById('borrowBookModal').classList.remove('hidden');
         }
 
         function showPage(id) {
@@ -1479,7 +1474,6 @@ public class MainActivity extends Activity {
         window.toggleAuthMode = toggleAuthMode;
         window.handleSignOut = handleSignOut;
         window.toggleMobileMenu = toggleMobileMenu;
-        window.borrowBook = borrowBook;
         window.openAddBookModal = openAddBookModal;
         window.closeAddBookModal = closeAddBookModal;
         window.openIssueBookModal = openIssueBookModal;

@@ -496,99 +496,6 @@ import { AdminView } from './views/AdminView';
 import { NotificationsView } from './views/NotificationsView';
 import { MyBorrowsView } from './views/MyBorrowsView';
 
-function ReminderManager() {
-  const { user, profile } = useAuth();
-
-  useEffect(() => {
-    if (!user || !profile) return;
-
-    // Request notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-
-    // Listener for new notifications
-    const qNotif = query(
-      collection(db, 'notifications'),
-      where('userId', 'in', [user.uid, 'all']),
-      limit(10) // Small limit for safety
-    );
-
-    const unsubscribe = onSnapshot(qNotif, (snap) => {
-      snap.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data() as AppNotification;
-          // Only show if it's new (created within last 30 seconds to avoid spam on initial load)
-          const createdAt = (data.createdAt as any)?.toDate?.() || new Date();
-          if (new Date().getTime() - createdAt.getTime() < 30000) {
-            toast.info(data.title, { description: data.message });
-            
-            // অ্যান্ড্রয়েড নেটিভ নোটিফিকেশন ব্রিজ চেক
-            if (typeof (window as any).Android !== 'undefined' && (window as any).Android.showNotification) {
-              (window as any).Android.showNotification(data.title, data.message);
-            } else if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(data.title, { body: data.message });
-            }
-          }
-        }
-      });
-    });
-
-    const checkReminders = async () => {
-      try {
-        const q = query(
-          collection(db, 'borrows'), 
-          where('memberId', '==', profile.id), 
-          where('status', '==', 'active')
-        );
-        const snap = await getDocs(q);
-        const now = new Date();
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        snap.docs.forEach(async (d) => {
-          const data = d.data() as BorrowRecord;
-          if (!data.dueDate) return;
-
-          const dueDate = data.dueDate instanceof Date ? data.dueDate : (data.dueDate as any).toDate();
-          
-          // If due date is tomorrow
-          if (dueDate.toDateString() === tomorrow.toDateString()) {
-            const bookSnap = await getDoc(doc(db, 'books', data.bookId));
-            const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
-            const msg = `রিমাইন্ডার: "${bookTitle}" ফেরত দেওয়ার সময় আগামীকাল!`;
-            toast.info(msg, { duration: 10000 });
-            
-            if (typeof (window as any).Android !== 'undefined' && (window as any).Android.showNotification) {
-              (window as any).Android.showNotification('লাইব্রেরী রিমাইন্ডার', msg);
-            } else if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('লাইব্রেরী রিমাইন্ডার', { body: msg });
-            }
-          } else if (dueDate <= now) {
-             const bookSnap = await getDoc(doc(db, 'books', data.bookId));
-             const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
-             const msg = `এলার্ট: "${bookTitle}" ফেরত দেওয়ার সময় পার হয়ে গেছে!`;
-             toast.error(msg, { duration: 15000 });
-             
-             if (typeof (window as any).Android !== 'undefined' && (window as any).Android.showNotification) {
-               (window as any).Android.showNotification('লাইব্রেরী এলার্ট', msg);
-             } else if ('Notification' in window && Notification.permission === 'granted') {
-               new Notification('লাইব্রেরী এলার্ট', { body: msg });
-             }
-          }
-        });
-      } catch (e) {
-        console.error("Reminder check failed:", e);
-      }
-    };
-
-    checkReminders();
-    return () => unsubscribe();
-  }, [user, profile]);
-
-  return null;
-}
-
 // Main App Component
 export default function App() {
   return (
@@ -596,7 +503,6 @@ export default function App() {
       <AuthProvider>
         <div className="min-h-screen bg-transparent font-sans text-slate-100 selection:bg-teal-500/30">
           <Toaster position="bottom-center" richColors theme="dark" />
-          <ReminderManager />
           <Navbar />
           <main>
             <Routes>
