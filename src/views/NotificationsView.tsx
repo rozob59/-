@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, updateDoc, doc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { AppNotification } from '../types';
 import { useAuth } from '../App';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell as BellIcon, CheckCircle2, Clock, Check } from 'lucide-react';
+import { Bell as BellIcon, CheckCircle2, Clock, Check, Trash2 } from 'lucide-react';
 
 export function NotificationsView() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -44,6 +44,19 @@ export function NotificationsView() {
     }
   };
 
+  const clearAllNotifications = async () => {
+    if (!window.confirm('আপনি কি নিশ্চিত যে সব নোটিফিকেশন মুছে ফেলতে চান?')) return;
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach(n => {
+        batch.delete(doc(db, 'notifications', n.id));
+      });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'notifications');
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -56,11 +69,22 @@ export function NotificationsView() {
           </h1>
           <p className="text-slate-400 mt-2 uppercase text-xs tracking-widest font-bold">লাইব্রেরি থেকে আসা বার্তা সমূহ</p>
         </div>
-        {unreadCount > 0 && (
-          <span className="bg-teal-500/20 text-teal-400 border border-teal-500/20 px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-teal-500/10">
-            {unreadCount} টি নতুন
-          </span>
-        )}
+        <div className="flex items-center gap-4">
+            {unreadCount > 0 && (
+              <span className="bg-teal-500/20 text-teal-400 border border-teal-500/20 px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-teal-500/10">
+                {unreadCount} টি নতুন
+              </span>
+            )}
+            {notifications.length > 0 && (
+                <button 
+                  onClick={clearAllNotifications}
+                  className="bg-rose-500/10 text-rose-400 p-2.5 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-lg"
+                  title="সব ক্লিয়ার করুন"
+                >
+                    <Trash2 className="w-5 h-5" />
+                </button>
+            )}
+        </div>
       </div>
 
       {loading ? (

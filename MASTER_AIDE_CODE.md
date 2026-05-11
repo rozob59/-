@@ -462,8 +462,13 @@ public class MainActivity extends Activity {
         <section id="page-notifications" class="page hidden">
             <div class="flex justify-between items-center mb-8">
                 <h2 class="text-3xl font-bold italic border-l-4 border-sky-500 pl-4">নোটিফিকেশনস</h2>
+                <div class="flex items-center gap-4">
                 <span id="unreadCountBadge" class="hidden bg-teal-500/20 text-teal-400 border border-teal-500/30 px-4 py-1.5 rounded-full text-xs font-bold fade-in"></span>
+                <button onclick="clearNotifications()" class="bg-rose-500/10 text-rose-400 p-2 rounded-lg hover:bg-rose-500 hover:text-white transition-all">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                </button>
             </div>
+        </div>
             <div id="notificationsList" class="space-y-4"></div>
         </section>
 
@@ -852,6 +857,26 @@ public class MainActivity extends Activity {
             } catch(e) {
                 console.error(e);
                 showToast("রিসেট করতে সমস্যা হয়েছে: "+e.message, "error");
+            }
+        }
+
+        async function clearNotifications() {
+            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে সব নোটিফিকেশন মুছে ফেলতে চান?");
+            if(!confirmed) return;
+
+            try {
+                // Assuming currentUser.uid is available
+                if(!currentUser) return;
+                const q = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid));
+                const snap = await getDocs(q);
+                
+                const batch = writeBatch(db);
+                snap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                showToast("সব নোটিফিকেশন ক্লিয়ার করা হয়েছে।", "success");
+            } catch (e) {
+                console.error(e);
+                showToast("নোটিফিকেশন ক্লিয়ার করতে সমস্যা হয়েছে।", "error");
             }
         }
 
@@ -1449,6 +1474,7 @@ public class MainActivity extends Activity {
         window.deleteBook = deleteBook;
         window.handleForgotPassword = handleForgotPassword;
         window.resetSystem = resetSystem;
+        window.clearNotifications = clearNotifications;
 
     </script>
 </body>
