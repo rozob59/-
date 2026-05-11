@@ -1438,16 +1438,22 @@ public class MainActivity extends Activity {
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     ` : ''}
-                    <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden">
-                        ${b.coverURL ? `<img src="${b.coverURL}" class="w-full h-full object-cover" />` : '<div class="w-full h-full flex items-center justify-center italic text-xs text-slate-600">No Image</div>'}
-                    </div>
-                    <h4 class="font-bold text-sm truncate">${b.title}</h4>
-                    <p class="text-xs text-slate-500">${b.author}</p>
-                    <div class="mt-auto pt-4 flex items-center justify-between">
-                        <div class={`px-2 py-1 rounded-md text-[9px] font-bold uppercase ${b.available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                            ${b.available ? 'AVAILABLE' : 'BORROWED'}
+                    <div class="aspect-[3/4] bg-[#0f172a]/50 rounded-2xl mb-4 overflow-hidden relative flex items-center justify-center border border-white/5">
+                        <div class="absolute top-3 right-3 z-10">
+                            <span class="px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase border border-[#2dd4bf]/20 bg-[#2dd4bf]/10 text-[#2dd4bf]">
+                                ${b.available ? 'AVAILABLE' : 'BORROWED'}
+                            </span>
                         </div>
-                        ${b.available ? `` : ''}
+                        ${b.coverURL ? `<img src="${b.coverURL}" class="w-full h-full object-cover" />` : '<i data-lucide="book-open" class="w-16 h-16 text-slate-600/50"></i>'}
+                    </div>
+                    <h4 class="font-bold text-base mb-1 truncate text-white">${b.title}</h4>
+                    <p class="text-xs text-slate-400">${b.author}</p>
+                    <div class="mt-auto pt-4 flex items-center justify-between border-t border-white/5 pt-3">
+                        <span class="text-[10px] uppercase text-slate-500 tracking-wider font-medium">আইডি: ${b.id.substring(0,4)}</span>
+                        ${b.available 
+                            ? `<button onclick="borrowBook('${b.id}')" class="text-[11px] font-bold text-[#2dd4bf] hover:text-teal-300 transition-colors">ইস্যু করুন</button>` 
+                            : `<span class="text-[11px] font-bold text-rose-400">বুকড</span>`
+                        }
                     </div>
                 </div>
             `).join('');
