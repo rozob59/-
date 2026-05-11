@@ -538,27 +538,32 @@ public class MainActivity extends Activity {
         }
 
         async function addNewBook() {
-            const btn = event?.currentTarget || document.querySelector('#addBookModal button[onclick="addNewBook()"]');
             const title = document.getElementById('newBookTitle').value.trim();
             const author = document.getElementById('newBookAuthor').value.trim();
             let coverURL = document.getElementById('newBookURL').value.trim();
+            const btn = document.querySelector('#addBookModal button[onclick="addNewBook()"]');
             
             if(!title || !author) return alert("বইয়ের নাম এবং লেখকের নাম দিন");
             if(selectedCoverBase64) coverURL = selectedCoverBase64;
             
-            if(btn) btn.disabled = true;
+            if(btn) {
+                btn.disabled = true;
+                btn.textContent = "সেভ হচ্ছে...";
+            }
+
             try {
                 await addDoc(collection(db, 'books'), { 
                     title, 
                     author, 
-                    coverURL, 
+                    coverURL: coverURL || '', 
                     available: true,
                     createdAt: serverTimestamp() 
                 });
-                closeAddBookModal();
-                alert("বই যোগ করা হয়েছে");
                 
-                // রিসেট ফরম
+                alert("বই যোগ করা হয়েছে সফলভাবে!");
+                closeAddBookModal();
+                
+                // ক্লিয়ার ফরম
                 document.getElementById('newBookTitle').value = "";
                 document.getElementById('newBookAuthor').value = "";
                 document.getElementById('newBookURL').value = "";
@@ -566,10 +571,13 @@ public class MainActivity extends Activity {
                 document.getElementById('coverPreview').innerHTML = `<i data-lucide="camera" class="w-6 h-6 text-slate-500"></i><span class="text-[9px] uppercase font-bold text-slate-500 mt-1">ফটো আপলোড</span>`;
                 lucide.createIcons();
             } catch(e) { 
-                console.error(e);
-                alert("সেভ করতে সমস্যা হয়েছে: " + e.message); 
+                console.error("Error adding book:", e);
+                alert("সমস্যা হয়েছে: " + e.message); 
             } finally {
-                if(btn) btn.disabled = false;
+                if(btn) {
+                    btn.disabled = false;
+                    btn.textContent = "বই সেভ করুন";
+                }
             }
         }
 

@@ -1,6 +1,8 @@
 {
   "name": "Dokkhin Gobdha Public Library",
   "description": "দক্ষিণ গোবধা পাবলিক লাইব্রেরী - একটি আধুনিক লাইব্রেরী ম্যানেজমেন্ট সমাধান। ফায়ারবেস অথেন্টিকেশন এবং রিয়েল-টাইম ডেটাবেস সহ।",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera"
+  ],
   "majorCapabilities": []
 }
