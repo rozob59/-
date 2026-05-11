@@ -310,11 +310,21 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      await addDoc(collection(db, 'books'), {
+      const bookRef = await addDoc(collection(db, 'books'), {
         ...formData,
         available: true,
         createdAt: serverTimestamp()
       });
+      
+      // Create global notification
+      await addDoc(collection(db, 'notifications'), {
+        userId: 'all',
+        title: 'নতুন বই যুক্ত করা হয়েছে!',
+        message: `"${formData.title}" বইটি এখন লাইব্রেরিতে পাওয়া যাচ্ছে। পড়ার জন্য সংগ্রহ করুন!`,
+        createdAt: serverTimestamp(),
+        read: false
+      });
+
       toast.success("নতুন বইটি সফলভাবে যোগ করা হয়েছে!");
       onClose();
     } catch (err: any) {
@@ -423,10 +433,14 @@ function IssueBookModal({ books, members, onClose }: { books: Book[], members: M
     if (!selectedBook || !selectedMember) return;
     setLoading(true);
     try {
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 7); // Default 7 days
+
       await addDoc(collection(db, 'borrows'), {
         bookId: selectedBook,
         memberId: selectedMember,
         borrowDate: serverTimestamp(),
+        dueDate: dueDate,
         status: 'active'
       });
       await updateDoc(doc(db, 'books', selectedBook), {

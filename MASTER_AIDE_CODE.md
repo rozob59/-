@@ -190,6 +190,12 @@ public class MainActivity extends Activity {
         .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 
+        /* Modal & Dialog Styles */
+        #confirmModal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; opacity: 0; pointer-events: none; transition: all 0.3s ease; }
+        #confirmModal.show { opacity: 1; pointer-events: auto; }
+        .confirm-card { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); padding: 2rem; border-radius: 2rem; width: 90%; max-width: 400px; transform: scale(0.9); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        #confirmModal.show .confirm-card { transform: scale(1); }
+
         /* Toast Styles */
         #toast-container { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none; }
         .toast { 
@@ -284,6 +290,10 @@ public class MainActivity extends Activity {
                 <button onclick="showPage('home')" class="hover:text-teal-400 transition-all">হোম</button>
                 <button onclick="showPage('books')" class="hover:text-teal-400 transition-all">বইসমূহ</button>
                 <button onclick="showPage('myBorrows')" class="hover:text-teal-400 transition-all">আমার বই</button>
+                <button onclick="showPage('notifications')" class="hover:text-teal-400 transition-all relative">
+                    নোটিফিকেশন
+                    <span id="notifBadge" class="hidden absolute -top-1 -right-2 w-2 h-2 bg-rose-500 rounded-full"></span>
+                </button>
                 <button id="adminLink" onclick="showPage('admin')" class="hidden text-teal-400 border border-teal-500/30 px-3 py-1 rounded-full">এডমিন</button>
             </div>
 
@@ -308,6 +318,7 @@ public class MainActivity extends Activity {
             <button onclick="showPage('home'); toggleMobileMenu()" class="text-slate-400 hover:text-teal-400">হোম</button>
             <button onclick="showPage('books'); toggleMobileMenu()" class="text-slate-400 hover:text-teal-400">বইসমূহ</button>
             <button onclick="showPage('myBorrows'); toggleMobileMenu()" class="text-slate-400 hover:text-teal-400">আমার বই</button>
+            <button onclick="showPage('notifications'); toggleMobileMenu()" class="text-slate-400 hover:text-teal-400">নোটিফিকেশন</button>
             <button id="mbAdmin" onclick="showPage('admin'); toggleMobileMenu()" class="hidden text-teal-400">এডমিন প্যানেল</button>
             <button onclick="handleSignOut(); toggleMobileMenu()" class="text-rose-400">লগআউট</button>
         </div>
@@ -349,8 +360,13 @@ public class MainActivity extends Activity {
         </section>
 
         <section id="page-myBorrows" class="page hidden">
-            <h2 class="text-3xl font-bold mb-8">আমার ধার নেওয়া বইসমূহ</h2>
-            <div id="myBorrowsList" class="space-y-4"></div>
+            <h2 class="text-3xl font-bold mb-8 italic border-l-4 border-amber-500 pl-4">আমার ধার নেওয়া বইসমূহ</h2>
+            <div id="myBorrowsList" class="grid sm:grid-cols-2 gap-4"></div>
+        </section>
+
+        <section id="page-notifications" class="page hidden">
+            <h2 class="text-3xl font-bold mb-8 italic border-l-4 border-sky-500 pl-4">নোটিফিকেশনস</h2>
+            <div id="notificationsList" class="space-y-3"></div>
         </section>
 
         <section id="page-admin" class="page hidden">
@@ -431,6 +447,21 @@ public class MainActivity extends Activity {
         </div>
     </main>
 
+    <!-- Custom Confirm Modal -->
+    <div id="confirmModal">
+        <div class="confirm-card flex flex-col items-center text-center">
+            <div class="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-4">
+                <i data-lucide="help-circle" class="w-8 h-8 text-rose-500"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">আপনি কি নিশ্চিত?</h3>
+            <p id="confirmMessage" class="text-slate-400 text-sm mb-8">এটি করার ফলে ডাটা চিরতরে হারিয়ে যেতে পারে।</p>
+            <div class="flex gap-4 w-full">
+                <button id="confirmCancel" class="flex-1 py-3 px-4 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-all">বাতিল</button>
+                <button id="confirmOk" class="flex-1 py-3 px-4 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-500 transition-all shadow-lg shadow-rose-500/20">হ্যাঁ, মুছুন</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
@@ -490,6 +521,39 @@ public class MainActivity extends Activity {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 500);
             }, 3000);
+        }
+
+        // কাস্টম কনফার্মেশন সিস্টেম
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmModal');
+                const msgEl = document.getElementById('confirmMessage');
+                const okBtn = document.getElementById('confirmOk');
+                const cancelBtn = document.getElementById('confirmCancel');
+
+                msgEl.textContent = message;
+                modal.classList.add('show');
+
+                const handleOk = () => {
+                    modal.classList.remove('show');
+                    cleanup();
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    modal.classList.remove('show');
+                    cleanup();
+                    resolve(false);
+                };
+
+                const cleanup = () => {
+                    okBtn.removeEventListener('click', handleOk);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                };
+
+                okBtn.addEventListener('click', handleOk);
+                cancelBtn.addEventListener('click', handleCancel);
+            });
         }
 
         // --- মূল ফাংশনসমূহ ---
@@ -600,6 +664,23 @@ public class MainActivity extends Activity {
                 document.getElementById('statActiveBorrows').textContent = borrows.filter(b => b.status === 'active').length;
                 document.getElementById('statReturned').textContent = borrows.filter(b => b.status === 'returned').length;
                 renderBorrows(borrows);
+                
+                // ইউজার ডেটা ফিল্টার
+                const myActive = borrows.filter(b => b.memberId === currentUser.uid);
+                renderMyBorrows(myActive);
+                checkReminders(myActive.filter(b => b.status === 'active'));
+            });
+
+            // নোটিফিকেশন লিসেনার
+            const qNotif = query(collection(db, 'notifications'), where('userId', 'in', [currentUser.uid, 'all']));
+            onSnapshot(qNotif, snap => {
+                const notifs = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderNotifications(notifs);
+                const unread = notifs.filter(n => !n.read).length;
+                const badge = document.getElementById('notifBadge');
+                if(badge) {
+                    badge.classList.toggle('hidden', unread === 0);
+                }
             });
         }
 
@@ -620,6 +701,89 @@ public class MainActivity extends Activity {
                 </tr>
             `).join('');
             lucide.createIcons();
+        }
+
+        function renderMyBorrows(list) {
+            const grid = document.getElementById('myBorrowsList');
+            if(!grid) return;
+            if(list.length === 0) {
+                grid.innerHTML = '<div class="col-span-full py-20 text-center text-slate-500 italic">আপনি কোনো বই ধার নেননি।</div>';
+                return;
+            }
+            grid.innerHTML = list.sort((a,b) => b.borrowDate?.seconds - a.borrowDate?.seconds).map(b => {
+                const dDate = b.dueDate instanceof Timestamp ? b.dueDate.toDate() : (b.dueDate ? new Date(b.dueDate) : new Date());
+                const isOverdue = b.status === 'active' && dDate < new Date();
+                
+                return `
+                <div class="glass-panel p-6 rounded-[2rem] flex flex-col gap-4 fade-in">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-16 bg-slate-800 rounded-xl flex-shrink-0 flex items-center justify-center">
+                            <i data-lucide="book" class="w-6 h-6 text-slate-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white text-sm">${b.bookTitle}</h4>
+                            <p class="text-[10px] sm:text-xs mt-1 ${isOverdue ? 'text-rose-400 font-bold' : 'text-slate-500'}">
+                                ${b.status === 'active' ? `ফেরত: ${dDate.toLocaleDateString('bn-BD')}` : 'ফেরত দেওয়া হয়েছে'}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-2 pt-4 border-t border-white/5">
+                        <span class="text-[9px] font-bold uppercase tracking-widest ${b.status === 'active' ? 'text-amber-400' : 'text-emerald-400'}">
+                            ${b.status === 'active' ? (isOverdue ? 'সময় শেষ' : 'চলমান') : 'সম্পন্ন'}
+                        </span>
+                        <div class="flex gap-2">
+                             <i data-lucide="${b.status === 'active' ? 'clock' : 'check-circle-2'}" class="w-4 h-4 ${b.status === 'active' ? (isOverdue ? 'text-rose-500' : 'text-amber-500') : 'text-emerald-500'}"></i>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+            lucide.createIcons();
+        }
+
+        function renderNotifications(list) {
+            const container = document.getElementById('notificationsList');
+            if(!container) return;
+            if(list.length === 0) {
+                container.innerHTML = '<div class="py-20 text-center text-slate-500 italic">কোনো নোটিফিকেশন নেই</div>';
+                return;
+            }
+            container.innerHTML = list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map(n => `
+                <div class="glass-panel p-5 rounded-2xl flex gap-4 items-start ${n.read ? 'opacity-60' : 'border-l-4 border-teal-500'}">
+                    <div class="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-5 h-5 text-teal-400"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                            <h5 class="font-bold text-white text-sm">${n.title}</h5>
+                            <span class="text-[9px] text-slate-600">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">${n.message}</p>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        let reminderShown = false;
+        async function checkReminders(activeBorrows) {
+            if(reminderShown) return;
+            const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+            const now = new Date();
+            
+            for(const b of activeBorrows) {
+                if(!b.dueDate) continue;
+                const dDate = b.dueDate instanceof Timestamp ? b.dueDate.toDate() : new Date(b.dueDate);
+                
+                if(dDate.toDateString() === tomorrow.toDateString()) {
+                    showToast(`রিমাইন্ডার: "${b.bookTitle}" ফেরত দেওয়ার সময় আগামীকাল!`, 'info');
+                    reminderShown = true;
+                    break;
+                } else if(dDate <= now) {
+                    showToast(`এলার্ট: "${b.bookTitle}" ফেরত দেওয়ার সময় পার হয়ে গেছে!`, 'error');
+                    reminderShown = true;
+                    break;
+                }
+            }
         }
 
         let selectedCoverBase64 = null;
@@ -685,6 +849,15 @@ public class MainActivity extends Activity {
                     available: true,
                     createdAt: serverTimestamp() 
                 });
+
+                // নতুন বইয়ের নোটিফিকেশন পাঠানো
+                await addDoc(collection(db, 'notifications'), {
+                    userId: 'all',
+                    title: 'নতুন বই যুক্ত হয়েছে!',
+                    message: `"${title}" বইটি এখন লাইব্রেরিতে পাওয়া যাচ্ছে। পড়ার জন্য সংগ্রহ করুন!`,
+                    createdAt: serverTimestamp(),
+                    read: false
+                });
                 
                 showToast("অভিনন্দন! বইটি সফলভাবে সেভ হয়েছে।", "success");
                 closeAddBookModal();
@@ -722,7 +895,9 @@ public class MainActivity extends Activity {
 
         async function deleteBook(id) {
             console.log("Attempting to delete book:", id);
-            if(!confirm("আপনি কি নিশ্চিত যে এই বইটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।")) return;
+            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে এই বইটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।");
+            if(!confirmed) return;
+            
             try {
                 await deleteDoc(doc(db, 'books', id));
                 showToast("বইটি সফলভাবে মুছে ফেলা হয়েছে।", "success");
@@ -766,12 +941,20 @@ public class MainActivity extends Activity {
 
         async function borrowBook(id) {
             const book = books.find(b => b.id === id);
-            const ret = new Date(); ret.setDate(ret.getDate() + 14);
+            const now = new Date();
+            const dueDate = new Date(); 
+            dueDate.setDate(dueDate.getDate() + 14); // ২ সপ্তাহ সময়
+
             const batch = writeBatch(db);
             const bRef = doc(collection(db, 'borrows'));
             batch.set(bRef, {
-                bookId: id, bookTitle: book.title, memberId: currentUser.uid, memberName: currentUser.displayName,
-                borrowDate: serverTimestamp(), returnDate: Timestamp.fromDate(ret), status: 'active'
+                bookId: id, 
+                bookTitle: book.title, 
+                memberId: currentUser.uid, 
+                memberName: currentUser.displayName,
+                borrowDate: serverTimestamp(), 
+                dueDate: Timestamp.fromDate(dueDate), 
+                status: 'active'
             });
             batch.update(doc(db, 'books', id), { available: false });
             await batch.commit();

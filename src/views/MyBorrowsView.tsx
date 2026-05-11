@@ -72,19 +72,31 @@ export function MyBorrowsView() {
                     </div>
                   </div>
                   
-                  <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {borrow.borrowDate instanceof Date ? borrow.borrowDate.toLocaleDateString() : (borrow.borrowDate as any)?.toDate?.().toLocaleDateString()}
+                    <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-3">
+                      <div className="flex flex-col sm:items-end gap-1">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                          <Calendar className="w-3.5 h-3.5" />
+                          শুরু: {borrow.borrowDate instanceof Date ? borrow.borrowDate.toLocaleDateString() : (borrow.borrowDate as any)?.toDate?.().toLocaleDateString()}
+                        </div>
+                        {borrow.status === 'active' && borrow.dueDate && (
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-rose-400 uppercase tracking-widest">
+                            ফেরত: {borrow.dueDate instanceof Date ? borrow.dueDate.toLocaleDateString() : (borrow.dueDate as any)?.toDate?.().toLocaleDateString()}
+                          </div>
+                        )}
+                        {borrow.status === 'returned' && borrow.returnDate && (
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                            ফেরত: {borrow.returnDate instanceof Date ? borrow.returnDate.toLocaleDateString() : (borrow.returnDate as any)?.toDate?.().toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                      <div className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 border shadow-lg ${
+                        borrow.status === 'active' 
+                          ? 'bg-amber-500/20 text-amber-400 border-amber-500/20 shadow-amber-500/10' 
+                          : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-emerald-500/10'}`}>
+                        {borrow.status === 'active' ? <Clock className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                        {borrow.status === 'active' ? 'চলমান' : 'ফেরত হয়েছে'}
+                      </div>
                     </div>
-                    <div className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 border shadow-lg ${
-                      borrow.status === 'active' 
-                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/20 shadow-amber-500/10' 
-                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20 shadow-emerald-500/10'}`}>
-                      {borrow.status === 'active' ? <Clock className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-                      {borrow.status === 'active' ? 'চলমান' : 'ফেরত হয়েছে'}
-                    </div>
-                  </div>
                 </motion.div>
               );
             })}

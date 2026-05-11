@@ -27,6 +27,7 @@ export interface BorrowRecord {
   bookId: string;
   memberId: string;
   borrowDate: Date | Timestamp;
+  dueDate: Date | Timestamp;
   returnDate?: Date | Timestamp;
   status: 'active' | 'returned';
 }

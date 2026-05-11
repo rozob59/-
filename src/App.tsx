@@ -12,10 +12,10 @@ import {
   updateProfile,
   signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
-import { Member } from './types';
-import { Toaster } from 'sonner';
+import { Member, BorrowRecord } from './types';
+import { Toaster, toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -428,6 +428,56 @@ import { AdminView } from './views/AdminView';
 import { NotificationsView } from './views/NotificationsView';
 import { MyBorrowsView } from './views/MyBorrowsView';
 
+function ReminderManager() {
+  const { profile } = useAuth();
+
+  useEffect(() => {
+    if (!profile) return;
+
+    const checkReminders = async () => {
+      try {
+        const q = query(
+          collection(db, 'borrows'), 
+          where('memberId', '==', profile.id), 
+          where('status', '==', 'active')
+        );
+        const snap = await getDocs(q);
+        const now = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        snap.docs.forEach(async (d) => {
+          const data = d.data() as BorrowRecord;
+          if (!data.dueDate) return;
+
+          const dueDate = data.dueDate instanceof Date ? data.dueDate : (data.dueDate as any).toDate();
+          
+          // If due date is tomorrow
+          if (dueDate.toDateString() === tomorrow.toDateString()) {
+            const bookSnap = await getDoc(doc(db, 'books', data.bookId));
+            const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
+            toast.info(`রিমাইন্ডার: "${bookTitle}" ফেরত দেওয়ার সময় আগামীকাল!`, {
+              duration: 10000,
+            });
+          } else if (dueDate <= now) {
+             const bookSnap = await getDoc(doc(db, 'books', data.bookId));
+             const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
+             toast.error(`এলার্ট: "${bookTitle}" ফেরত দেওয়ার সময় পার হয়ে গেছে!`, {
+               duration: 15000,
+             });
+          }
+        });
+      } catch (e) {
+        console.error("Reminder check failed:", e);
+      }
+    };
+
+    checkReminders();
+  }, [profile]);
+
+  return null;
+}
+
 // Main App Component
 export default function App() {
   return (
@@ -435,6 +485,7 @@ export default function App() {
       <AuthProvider>
         <div className="min-h-screen bg-transparent font-sans text-slate-100 selection:bg-teal-500/30">
           <Toaster position="bottom-center" richColors theme="dark" />
+          <ReminderManager />
           <Navbar />
           <main>
             <Routes>
