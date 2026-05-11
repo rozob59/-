@@ -992,7 +992,7 @@ public class MainActivity extends Activity {
                 checkReminders(myActive.filter(b => b.status === 'active'));
                 
                 // রান রিমাইন্ডার ম্যানেজার
-                ReminderManager.process(borrows);
+                runReminderManager(borrows);
             }, e => console.error("Borrows onSnapshot error:", e));
 
             // নোটিফিকেশন লিসেনার
@@ -1158,52 +1158,50 @@ public class MainActivity extends Activity {
             }
         }
 
-        const ReminderManager = {
-            async process(allBorrows) {
-                // শুধু এডমিন হিসেবে প্রসেস করব যাতে সবার ডিভাইস থেকে মাল্টিপল রিমাইন্ডার না যায়
-                const isAdmin = currentUser && currentUser.email && currentUser.email.toLowerCase() === 'rozobali01321786059@gmail.com';
-                if (!isAdmin) return;
+        async function runReminderManager(allBorrows) {
+            // শুধু এডমিন হিসেবে প্রসেস করব যাতে সবার ডিভাইস থেকে মাল্টিপল রিমাইন্ডার না যায়
+            const isAdmin = currentUser && currentUser.email && currentUser.email.toLowerCase() === 'rozobali01321786059@gmail.com';
+            if (!isAdmin) return;
 
-                const tomorrow = new Date(); 
-                tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrow = new Date(); 
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            const now = new Date();
+
+            for(const b of allBorrows) {
+                if(b.status !== 'active' || !b.dueDate || b.reminderSent) continue;
                 
-                const now = new Date();
+                const dDate = b.dueDate instanceof Timestamp ? b.dueDate.toDate() : new Date(b.dueDate);
+                
+                const isDueTomorrow = dDate.toDateString() === tomorrow.toDateString();
+                const isOverdue = dDate <= now;
 
-                for(const b of allBorrows) {
-                    if(b.status !== 'active' || !b.dueDate || b.reminderSent) continue;
-                    
-                    const dDate = b.dueDate instanceof Timestamp ? b.dueDate.toDate() : new Date(b.dueDate);
-                    
-                    const isDueTomorrow = dDate.toDateString() === tomorrow.toDateString();
-                    const isOverdue = dDate <= now;
+                if(isDueTomorrow || isOverdue) {
+                    try {
+                        const batch = writeBatch(db);
+                        
+                        // 1. Notify user
+                        const notifRef = doc(collection(db, 'notifications'));
+                        batch.set(notifRef, {
+                            userId: b.memberId,
+                            title: isOverdue ? 'বই ফেরত দেওয়ার সময় পার হয়ে গেছে!' : 'বই ফেরত দেওয়ার রিমাইন্ডার',
+                            message: `আপনার নেওয়া "${b.bookTitle}" বইটি ${isOverdue ? 'ফেরত দেওয়ার সময় পার হয়ে গেছে' : 'আগামীকাল ফেরত দেওয়ার কথা'}। অনুগ্রহ করে বইটি ফেরত দিন।`,
+                            createdAt: serverTimestamp(),
+                            read: false
+                        });
 
-                    if(isDueTomorrow || isOverdue) {
-                        try {
-                            const batch = writeBatch(db);
-                            
-                            // 1. Notify user
-                            const notifRef = doc(collection(db, 'notifications'));
-                            batch.set(notifRef, {
-                                userId: b.memberId,
-                                title: isOverdue ? 'বই ফেরত দেওয়ার সময় পার হয়ে গেছে!' : 'বই ফেরত দেওয়ার রিমাইন্ডার',
-                                message: `আপনার নেওয়া "${b.bookTitle}" বইটি ${isOverdue ? 'ফেরত দেওয়ার সময় পার হয়ে গেছে' : 'আগামীকাল ফেরত দেওয়ার কথা'}। অনুগ্রহ করে বইটি ফেরত দিন।`,
-                                createdAt: serverTimestamp(),
-                                read: false
-                            });
+                        // 2. Mark reminder as sent
+                        const borrowRef = doc(db, 'borrows', b.id);
+                        batch.update(borrowRef, { reminderSent: true });
 
-                            // 2. Mark reminder as sent
-                            const borrowRef = doc(db, 'borrows', b.id);
-                            batch.update(borrowRef, { reminderSent: true });
-
-                            await batch.commit();
-                            console.log(`Reminder sent globally for borrow: ${b.id}`);
-                        } catch(e) {
-                            console.error("Error sending ReminderManager notification:", e);
-                        }
+                        await batch.commit();
+                        console.log(`Reminder sent globally for borrow: ${b.id}`);
+                    } catch(e) {
+                        console.error("Error sending ReminderManager notification:", e);
                     }
                 }
             }
-        };
+        }
 
         let selectedCoverBase64 = null;
 
