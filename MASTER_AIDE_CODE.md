@@ -456,8 +456,11 @@ public class MainActivity extends Activity {
         </section>
 
         <section id="page-notifications" class="page hidden">
-            <h2 class="text-3xl font-bold mb-8 italic border-l-4 border-sky-500 pl-4">নোটিফিকেশনস</h2>
-            <div id="notificationsList" class="space-y-3"></div>
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold italic border-l-4 border-sky-500 pl-4">নোটিফিকেশনস</h2>
+                <span id="unreadCountBadge" class="hidden bg-teal-500/20 text-teal-400 border border-teal-500/30 px-4 py-1.5 rounded-full text-xs font-bold fade-in"></span>
+            </div>
+            <div id="notificationsList" class="space-y-4"></div>
         </section>
 
         <section id="page-admin" class="page hidden">
@@ -469,11 +472,15 @@ public class MainActivity extends Activity {
                 <div class="flex flex-wrap gap-4">
                     <button onclick="openAddBookModal()" class="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center gap-2 shadow-xl">
                         <i data-lucide="plus-circle" class="w-5 h-5 text-teal-400"></i>
-                        নতুন বই যোগ করুন
+                        বই যোগ করুন
                     </button>
                     <button onclick="openIssueBookModal()" class="bg-teal-500 text-slate-900 px-6 py-3 rounded-2xl font-bold hover:bg-teal-400 transition-all flex items-center gap-2 shadow-xl shadow-teal-500/30">
                         <i data-lucide="book-open" class="w-5 h-5"></i>
                         বই ইস্যু করুন
+                    </button>
+                    <button onclick="openAddMemberModal()" class="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center gap-2 shadow-xl">
+                        <i data-lucide="user-plus" class="w-5 h-5 text-teal-400"></i>
+                        সদস্য যোগ
                     </button>
                 </div>
             </div>
@@ -494,6 +501,28 @@ public class MainActivity extends Activity {
                 <div class="glass-panel p-6 rounded-3xl border border-white/10">
                     <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">ফেরত হয়েছে</p>
                     <h4 id="statReturned" class="text-3xl font-bold text-blue-400">০</h4>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-[2.5rem] overflow-hidden border border-white/10 mb-10">
+                <div class="px-8 py-5 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                    <h3 class="font-bold flex items-center gap-3">
+                        <i data-lucide="users" class="w-5 h-5 text-teal-400"></i>
+                        সদস্যদের তালিকা
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[10px] text-slate-500 font-bold uppercase border-b border-white/5 bg-white/2">
+                                <th class="px-8 py-4">সদস্য</th>
+                                <th class="px-8 py-4">ইমেইল</th>
+                                <th class="px-8 py-4">রোল</th>
+                                <th class="px-8 py-4">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTableBody" class="divide-y divide-white/5"></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -561,6 +590,39 @@ public class MainActivity extends Activity {
                         </select>
                     </div>
                     <button id="issueBtn" onclick="confirmIssueBook()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">ইস্যু নিশ্চিত করুন</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Member Modal -->
+        <div id="addMemberModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
+                <button onclick="closeAddMemberModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h3 class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">নতুন সদস্য যোগ করুন</h3>
+                <div class="space-y-4">
+                    <input id="newMemberName" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="নাম *">
+                    <input id="newMemberEmail" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="ইমেইল *">
+                    <select id="newMemberRole" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white appearance-none">
+                        <option value="member" class="bg-slate-900">MEMBER</option>
+                        <option value="admin" class="bg-slate-900">ADMIN</option>
+                    </select>
+                    <button id="addMbrBtn" onclick="addNewMember()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">সদস্য যোগ করুন</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notify User Modal -->
+        <div id="notifyUserModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
+                <button onclick="closeNotifyModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h3 id="notifyModalTitle" class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">নোটিফিকেশন পাঠান</h3>
+                <div class="space-y-4">
+                    <input id="notifTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="শিরোনাম">
+                    <textarea id="notifMessage" rows="4" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white resize-none" placeholder="বার্তা লিখুন..."></textarea>
+                    <button id="sendNotifBtn" onclick="confirmSendNotification()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl flex items-center justify-center gap-2">
+                        <i data-lucide="send" class="w-5 h-5"></i>
+                        পাঠান
+                    </button>
                 </div>
             </div>
         </div>
@@ -805,6 +867,7 @@ public class MainActivity extends Activity {
             onSnapshot(collection(db, 'members'), snap => {
                 members = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 document.getElementById('statTotalMembers').textContent = snap.size;
+                renderMembers();
             }, e => console.error("Members onSnapshot error:", e));
 
             onSnapshot(collection(db, 'borrows'), snap => {
@@ -843,9 +906,14 @@ public class MainActivity extends Activity {
                 const notifs = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderNotifications(notifs);
                 const unread = notifs.filter(n => !n.read).length;
+                
                 const badge = document.getElementById('notifBadge');
-                if(badge) {
-                    badge.classList.toggle('hidden', unread === 0);
+                if(badge) badge.classList.toggle('hidden', unread === 0);
+
+                const countLabel = document.getElementById('unreadCountBadge');
+                if(countLabel) {
+                    countLabel.textContent = `${unread} টি নতুন`;
+                    countLabel.classList.toggle('hidden', unread === 0);
                 }
             }, e => {
                 console.error("Notifications onSnapshot error:", e);
@@ -858,6 +926,7 @@ public class MainActivity extends Activity {
 
         function renderBorrows(list) {
             const tbody = document.getElementById('borrowsTableBody');
+            if(!tbody) return;
             tbody.innerHTML = list.sort((a,b) => b.borrowDate?.seconds - a.borrowDate?.seconds).map(b => `
                 <tr class="text-sm">
                     <td class="px-8 py-4 font-bold text-white">${b.bookTitle}</td>
@@ -920,20 +989,38 @@ public class MainActivity extends Activity {
                 return;
             }
             container.innerHTML = list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map(n => `
-                <div class="glass-panel p-5 rounded-2xl flex gap-4 items-start ${n.read ? 'opacity-60' : 'border-l-4 border-teal-500'}">
-                    <div class="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-5 h-5 text-teal-400"></i>
+                <div class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500'}">
+                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-6 h-6 text-teal-400"></i>
                     </div>
                     <div class="flex-1">
-                        <div class="flex justify-between items-start">
-                            <h5 class="font-bold text-white text-sm">${n.title}</h5>
-                            <span class="text-[9px] text-slate-600">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
+                        <div class="flex justify-between items-start mb-1">
+                            <h5 class="font-bold text-white text-base">${n.title}</h5>
+                            <span class="text-[10px] text-slate-500 font-medium">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
                         </div>
-                        <p class="text-xs text-slate-400 mt-1">${n.message}</p>
+                        <p class="text-sm text-slate-400 leading-relaxed">${n.message}</p>
                     </div>
+                    ${!n.read ? `
+                        <button onclick="markAsRead('${n.id}')" class="w-10 h-10 rounded-xl bg-slate-800 text-teal-500 flex items-center justify-center hover:bg-teal-500 hover:text-slate-950 transition-all shadow-lg active:scale-90">
+                            <i data-lucide="check" class="w-6 h-6"></i>
+                        </button>
+                    ` : `
+                        <div class="w-10 h-10 flex items-center justify-center text-slate-700">
+                             <i data-lucide="check-check" class="w-5 h-5"></i>
+                        </div>
+                    `}
                 </div>
             `).join('');
             lucide.createIcons();
+        }
+
+        async function markAsRead(id) {
+            try {
+                await setDoc(doc(db, 'notifications', id), { read: true }, { merge: true });
+            } catch(e) {
+                console.error("Error marking as read:", e);
+                showToast("ত্রুটি হয়েছে", "error");
+            }
         }
 
         let reminderShown = false;
@@ -1134,6 +1221,103 @@ public class MainActivity extends Activity {
             }
         }
 
+        function renderMembers() {
+            const tbody = document.getElementById('membersTableBody');
+            if(!tbody) return;
+            tbody.innerHTML = members.map(m => `
+                <tr class="text-sm">
+                    <td class="px-8 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-teal-400 capitalize">
+                                ${m.name ? m.name[0] : 'U'}
+                            </div>
+                            <span class="font-bold text-white">${m.name || 'Unknown'}</span>
+                        </div>
+                    </td>
+                    <td class="px-8 py-4 text-slate-400">${m.email}</td>
+                    <td class="px-8 py-4">
+                        <span class="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase ${m.role === 'admin' ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-500/20 text-slate-400'}">
+                            ${m.role || 'member'}
+                        </span>
+                    </td>
+                    <td class="px-8 py-4">
+                        <button onclick="openNotifyModal('${m.id}', '${m.name}')" class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center hover:bg-teal-500 hover:text-slate-900 transition-all">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        let selectedUserForNotif = null;
+        function openNotifyModal(id, name) {
+            selectedUserForNotif = id;
+            document.getElementById('notifyModalTitle').textContent = `নোটিফিকেশন পাঠান: ${name}`;
+            document.getElementById('notifyUserModal').classList.remove('hidden');
+        }
+        function closeNotifyModal() { document.getElementById('notifyUserModal').classList.add('hidden'); }
+
+        async function confirmSendNotification() {
+            const title = document.getElementById('notifTitle').value.trim();
+            const message = document.getElementById('notifMessage').value.trim();
+            const btn = document.getElementById('sendNotifBtn');
+
+            if(!title || !message) return showToast("শিরোনাম এবং বার্তা লিখুন", "error");
+
+            btn.disabled = true;
+            btn.textContent = "পাঠানো হচ্ছে...";
+
+            try {
+                await addDoc(collection(db, 'notifications'), {
+                    userId: selectedUserForNotif,
+                    title,
+                    message,
+                    createdAt: serverTimestamp(),
+                    read: false
+                });
+                showToast("নোটিফিকেশন পাঠানো হয়েছে!", "success");
+                closeNotifyModal();
+                document.getElementById('notifTitle').value = "";
+                document.getElementById('notifMessage').value = "";
+            } catch(e) {
+                showToast("ত্রুটি: " + e.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "পাঠান";
+                lucide.createIcons();
+            }
+        }
+
+        function openAddMemberModal() { document.getElementById('addMemberModal').classList.remove('hidden'); }
+        function closeAddMemberModal() { document.getElementById('addMemberModal').classList.add('hidden'); }
+
+        async function addNewMember() {
+            const name = document.getElementById('newMemberName').value.trim();
+            const email = document.getElementById('newMemberEmail').value.trim();
+            const role = document.getElementById('newMemberRole').value;
+            const btn = document.getElementById('addMbrBtn');
+
+            if(!name || !email) return showToast("নাম এবং ইমেইল দিন", "error");
+
+            btn.disabled = true;
+            btn.textContent = "অপেক্ষা করুন...";
+
+            try {
+                await addDoc(collection(db, 'members'), {
+                    name, email, role, createdAt: serverTimestamp()
+                });
+                showToast("সদস্য যোগ করা হয়েছে!", "success");
+                closeAddMemberModal();
+                document.getElementById('newMemberName').value = "";
+                document.getElementById('newMemberEmail').value = "";
+            } catch(e) { showToast(e.message, "error"); }
+            finally {
+                btn.disabled = false;
+                btn.textContent = "সদস্য যোগ করুন";
+            }
+        }
+
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
             if(!grid) return;
@@ -1211,6 +1395,13 @@ public class MainActivity extends Activity {
         window.openIssueBookModal = openIssueBookModal;
         window.closeIssueBookModal = closeIssueBookModal;
         window.confirmIssueBook = confirmIssueBook;
+        window.openAddMemberModal = openAddMemberModal;
+        window.closeAddMemberModal = closeAddMemberModal;
+        window.addNewMember = addNewMember;
+        window.openNotifyModal = openNotifyModal;
+        window.closeNotifyModal = closeNotifyModal;
+        window.confirmSendNotification = confirmSendNotification;
+        window.markAsRead = markAsRead;
         window.addNewBook = addNewBook;
         window.returnBook = returnBook;
         window.deleteBook = deleteBook;

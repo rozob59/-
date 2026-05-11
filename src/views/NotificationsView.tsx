@@ -108,7 +108,11 @@ export function NotificationsView() {
                       {n.createdAt instanceof Date ? n.createdAt.toLocaleDateString() : (n.createdAt as any)?.toDate?.().toLocaleDateString()}
                     </div>
                   </div>
-                  {!n.read && (
+                  {n.read ? (
+                    <div className="p-3 text-slate-700">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  ) : (
                     <button 
                       onClick={() => markAsRead(n.id)}
                       className="p-3 bg-white/5 text-teal-400 rounded-2xl hover:bg-teal-500 hover:text-slate-900 transition-all shadow-lg shadow-black/20 group-hover:scale-110"

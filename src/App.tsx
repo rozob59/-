@@ -113,9 +113,20 @@ import {
 
 // Components (Inlined for simplicity in this turn, can be moved to files if they grow)
 function Navbar() {
-  const { profile, logout } = useAuth();
+  const { profile, logout, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'notifications'), where('userId', 'in', [user.uid, 'all']));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const count = snap.docs.filter(d => !d.data().read).length;
+      setUnreadCount(count);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   return (
     <>
@@ -135,7 +146,14 @@ function Navbar() {
                 {profile && (
                   <>
                     <Link to="/my-borrows" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">আমার বই</Link>
-                    <Link to="/notifications" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">নোটিফিকেশন</Link>
+                    <Link to="/notifications" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5">
+                      নোটিফিকেশন
+                      {unreadCount > 0 && (
+                        <span className="flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-rose-500 text-[10px] text-white font-black">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </Link>
                     {profile.role === 'admin' && (
                       <Link to="/admin" className="text-teal-400 font-semibold px-3 py-2 text-sm font-medium decoration-2 underline-offset-4 underline">এডমিন প্যানেল</Link>
                     )}
