@@ -11,11 +11,15 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar" >
         <activity
             android:name=".MainActivity"
@@ -347,12 +351,12 @@ public class MainActivity extends Activity {
                 <h3 class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">নতুন বই যোগ করুন</h3>
                 <div class="space-y-4">
                     <div class="flex flex-col items-center mb-4">
-                        <label class="cursor-pointer group flex flex-col items-center">
-                            <div id="coverPreview" class="w-24 h-32 bg-white/5 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center overflow-hidden relative">
-                                <i data-lucide="camera" class="w-6 h-6 text-slate-500"></i>
-                                <span class="text-[9px] uppercase font-bold text-slate-500 mt-1 uppercase">ফটো আপলোড</span>
+                        <label class="cursor-pointer group flex flex-col items-center w-full">
+                            <div id="coverPreview" class="w-32 h-44 bg-white/5 border-2 border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center overflow-hidden relative transition-all hover:border-teal-500/50">
+                                <i data-lucide="camera" class="w-8 h-8 text-slate-500"></i>
+                                <span class="text-[10px] uppercase font-bold text-slate-500 mt-2">ফটো আপলোড</span>
                             </div>
-                            <input type="file" id="bookCoverFile" class="hidden" accept="image/*" onchange="previewCover(event)">
+                            <input type="file" id="bookCoverFile" class="hidden" accept="image/*">
                         </label>
                     </div>
                     <input id="newBookTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="বইয়ের নাম *">
@@ -524,55 +528,81 @@ public class MainActivity extends Activity {
 
         let selectedCoverBase64 = null;
 
-        function previewCover(event) {
-            const file = event.target.files[0];
-            if (file) {
-                if(file.size > 700 * 1024) return alert("ফাইল সাইজ ৭০০ কেবি এর কম হতে হবে");
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    selectedCoverBase64 = e.target.result;
-                    document.getElementById('coverPreview').innerHTML = `<img src="${selectedCoverBase64}" class="w-full h-full object-cover">`;
-                };
-                reader.readAsDataURL(file);
+        // ফাইল সিলেক্ট ইভেন্ট লিসেনার (অ্যান্ড্রয়েড ওয়েবভিউর জন্য এটি বেশি কার্যকরী)
+        document.addEventListener('change', (e) => {
+            if(e.target && e.target.id === 'bookCoverFile') {
+                const file = e.target.files[0];
+                if (file) {
+                    if(file.size > 800 * 1024) {
+                        alert("ফাইল সাইজ ৮০০ কেবি এর কম হতে হবে");
+                        e.target.value = '';
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        selectedCoverBase64 = event.target.result;
+                        const preview = document.getElementById('coverPreview');
+                        if(preview) {
+                            preview.innerHTML = `<img src="${selectedCoverBase64}" class="w-full h-full object-cover">`;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
             }
-        }
+        });
 
         async function addNewBook() {
-            const title = document.getElementById('newBookTitle').value.trim();
-            const author = document.getElementById('newBookAuthor').value.trim();
-            let coverURL = document.getElementById('newBookURL').value.trim();
-            const btn = document.querySelector('#addBookModal button[onclick="addNewBook()"]');
+            const titleEl = document.getElementById('newBookTitle');
+            const authorEl = document.getElementById('newBookAuthor');
+            const urlEl = document.getElementById('newBookURL');
+            const btn = document.querySelector('button[onclick="addNewBook()"]');
             
-            if(!title || !author) return alert("বইয়ের নাম এবং লেখকের নাম দিন");
-            if(selectedCoverBase64) coverURL = selectedCoverBase64;
+            const title = titleEl ? titleEl.value.trim() : "";
+            const author = authorEl ? authorEl.value.trim() : "";
+            let coverURL = urlEl ? urlEl.value.trim() : "";
+            
+            if(!title || !author) {
+                alert("দয়া করে বইয়ের নাম এবং লেখকের নাম সঠিকভাবে দিন।");
+                return;
+            }
+
+            // যদি ফাইল আপলোড করা থাকে তবে সেটিই হবে কভার ফটো
+            if(selectedCoverBase64) {
+                coverURL = selectedCoverBase64;
+            }
             
             if(btn) {
                 btn.disabled = true;
-                btn.textContent = "সেভ হচ্ছে...";
+                btn.textContent = "সেভ হচ্ছে, দয়া করে অপেক্ষা করুন...";
             }
 
             try {
-                await addDoc(collection(db, 'books'), { 
-                    title, 
-                    author, 
+                // সরাসরি Firebase addDoc ব্যবহার
+                const docRef = await addDoc(collection(db, 'books'), { 
+                    title: title, 
+                    author: author, 
                     coverURL: coverURL || '', 
                     available: true,
                     createdAt: serverTimestamp() 
                 });
                 
-                alert("বই যোগ করা হয়েছে সফলভাবে!");
+                console.log("Document written with ID: ", docRef.id);
+                alert("অভিনন্দন! বইটি সফলভাবে লাইব্রেরীতে যোগ করা হয়েছে।");
                 closeAddBookModal();
                 
-                // ক্লিয়ার ফরম
-                document.getElementById('newBookTitle').value = "";
-                document.getElementById('newBookAuthor').value = "";
-                document.getElementById('newBookURL').value = "";
+                // ফরম রিসেট করা
+                if(titleEl) titleEl.value = "";
+                if(authorEl) authorEl.value = "";
+                if(urlEl) urlEl.value = "";
                 selectedCoverBase64 = null;
-                document.getElementById('coverPreview').innerHTML = `<i data-lucide="camera" class="w-6 h-6 text-slate-500"></i><span class="text-[9px] uppercase font-bold text-slate-500 mt-1">ফটো আপলোড</span>`;
+                const preview = document.getElementById('coverPreview');
+                if(preview) {
+                    preview.innerHTML = `<i data-lucide="camera" class="w-8 h-8 text-slate-500"></i><span class="text-[10px] uppercase font-bold text-slate-500 mt-2">ফটো আপলোড</span>`;
+                }
                 lucide.createIcons();
             } catch(e) { 
                 console.error("Error adding book:", e);
-                alert("সমস্যা হয়েছে: " + e.message); 
+                alert("বই সেভ করতে সমস্যা হয়েছে: " + (e.message || "Unknown error")); 
             } finally {
                 if(btn) {
                     btn.disabled = false;
@@ -652,7 +682,6 @@ public class MainActivity extends Activity {
         window.closeAddBookModal = closeAddBookModal;
         window.addNewBook = addNewBook;
         window.returnBook = returnBook;
-        window.previewCover = previewCover;
 
     </script>
 </body>
