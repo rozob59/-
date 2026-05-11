@@ -195,11 +195,8 @@ public class MainActivity extends Activity {
 ```
 
 ### **৪. index.html (Assets ফাইলে বসাবেন)**
-পাথ: `app/src/main/assets/index.html`
+পাথ: `app/src/main/assets/index.html`        
 
-এই কোডটিতে আপনার অনুরোধ অনুযায়ী **ইউজার নেইম (ইমেইল) এবং পাসওয়ার্ড** লগইন সিস্টেম যুক্ত করা হয়েছে। ডিজাইন এবং আগের সব ফিচার (বই খোঁজা, এডমিন প্যানেল, বই ধার নেওয়া) একদম আগের মতোই রাখা হয়েছে।
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -289,7 +286,6 @@ public class MainActivity extends Activity {
             <p class="mt-4 text-teal-400 font-medium pulse">লোডিং হচ্ছে...</p>
         </div>
     </div>
-
 
     <!-- Auth Guard -->
     <div id="authGuard" class="hidden fixed inset-0 z-[90] bg-slate-950 flex items-center justify-center p-4">
@@ -641,33 +637,7 @@ public class MainActivity extends Activity {
                 </div>
             </div>
         </div>
-
-        <!-- Notification Details Modal -->
-        <div id="notifDetailsModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
-                <button onclick="closeNotifDetailsModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
-                <h3 id="notifDetailsTitle" class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4"></h3>
-                <p id="notifDetailsMessage" class="text-slate-300 leading-relaxed"></p>
-            </div>
-        </div>
     </main>
-
-<script>
-        let currentBorrowBookId = null;
-
-        function closeBorrowBookModal() {
-            document.getElementById('borrowBookModal').classList.add('hidden');
-        }
-
-        function showNotificationDetails(title, message) {
-            document.getElementById('notifDetailsTitle').textContent = title;
-            document.getElementById('notifDetailsMessage').textContent = message;
-            document.getElementById('notifDetailsModal').classList.remove('hidden');
-        }
-        function closeNotifDetailsModal() {
-            document.getElementById('notifDetailsModal').classList.add('hidden');
-        }
-    </script>
 
     <!-- Custom Confirm Modal -->
     <div id="confirmModal">
@@ -1096,10 +1066,10 @@ public class MainActivity extends Activity {
             }
             container.innerHTML = list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map(n => `
                 <div class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500'}">
-                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick='showNotificationDetails("${n.title}", `${n.message.replace(/'/g, "\\'")}`)'>
+                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0">
                         <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-6 h-6 text-teal-400"></i>
                     </div>
-                    <div class="flex-1 cursor-pointer" onclick='showNotificationDetails("${n.title}", `${n.message.replace(/'/g, "\\'")}`)'>
+                    <div class="flex-1">
                         <div class="flex justify-between items-start mb-1">
                             <h5 class="font-bold text-white text-base">${n.title}</h5>
                             <span class="text-[10px] text-slate-500 font-medium">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
@@ -1444,14 +1414,35 @@ public class MainActivity extends Activity {
                     <h4 class="font-bold text-sm truncate">${b.title}</h4>
                     <p class="text-xs text-slate-500">${b.author}</p>
                     <div class="mt-auto pt-4 flex items-center justify-between">
-                        <div class={`px-2 py-1 rounded-md text-[9px] font-bold uppercase ${b.available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                            ${b.available ? 'AVAILABLE' : 'BORROWED'}
-                        </div>
-                        ${b.available ? `` : ''}
+                        <span class="text-[10px] font-bold ${b.available ? 'text-teal-400' : 'text-rose-400'}">${b.available ? 'মজুদ' : 'ধার হয়েছে'}</span>
+                        ${b.available ? `<button onclick="borrowBook('${b.id}')" class="text-teal-400 hover:scale-110"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>` : ''}
                     </div>
                 </div>
             `).join('');
             lucide.createIcons();
+        }
+
+        async function borrowBook(id) {
+            const book = books.find(b => b.id === id);
+            const now = new Date();
+            const dueDate = new Date(); 
+            dueDate.setDate(dueDate.getDate() + 14); // ২ সপ্তাহ সময়
+
+            const batch = writeBatch(db);
+            const bRef = doc(collection(db, 'borrows'));
+            batch.set(bRef, {
+                bookId: id, 
+                bookTitle: book.title, 
+                memberId: currentUser.uid, 
+                memberName: currentUser.displayName,
+                borrowDate: serverTimestamp(), 
+                dueDate: Timestamp.fromDate(dueDate), 
+                status: 'active'
+            });
+            batch.update(doc(db, 'books', id), { available: false });
+            await batch.commit();
+            showToast("সফলভাবে বই রিযার্ভ করা হয়েছে!", "success");
+            loadBooks();
         }
 
         function showPage(id) {
@@ -1474,6 +1465,7 @@ public class MainActivity extends Activity {
         window.toggleAuthMode = toggleAuthMode;
         window.handleSignOut = handleSignOut;
         window.toggleMobileMenu = toggleMobileMenu;
+        window.borrowBook = borrowBook;
         window.openAddBookModal = openAddBookModal;
         window.closeAddBookModal = closeAddBookModal;
         window.openIssueBookModal = openIssueBookModal;
@@ -1485,8 +1477,6 @@ public class MainActivity extends Activity {
         window.openNotifyModal = openNotifyModal;
         window.closeNotifyModal = closeNotifyModal;
         window.confirmSendNotification = confirmSendNotification;
-        window.closeNotifDetailsModal = closeNotifDetailsModal;
-        window.showNotificationDetails = showNotificationDetails;
         window.markAsRead = markAsRead;
         window.addNewBook = addNewBook;
         window.returnBook = returnBook;
@@ -1498,11 +1488,8 @@ public class MainActivity extends Activity {
     </script>
 </body>
 </html>
-```
 
----
-
-### **⚠️ অতি জরুরি কাজ (এইটা না করলে লগইন হবে না)**
+## **⚠️ অতি জরুরি কাজ (এইটা না করলে লগইন হবে না)**
 ফায়ারবেস সাইটে গিয়ে **Email/Password** অপশনটি চালু করতে হবে:
 
 ১. এই লিঙ্কে যান: [Firebase Console Auth](https://console.firebase.google.com/project/gen-lang-client-0912734577/authentication/providers)
