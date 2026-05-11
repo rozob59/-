@@ -287,21 +287,72 @@ public class MainActivity extends Activity {
         </section>
 
         <section id="page-admin" class="page hidden">
-            <div class="flex items-center justify-between mb-8">
-                <h2 class="text-3xl font-bold">এডমিন প্যানেল</h2>
-            </div>
-            <div class="grid lg:grid-cols-4 gap-6">
-                <div class="lg:col-span-1 space-y-4">
-                    <div class="glass-panel p-6 rounded-2xl">
-                        <p class="text-xs text-slate-400 uppercase font-bold mb-1">মোট বই</p>
-                        <h4 id="statTotalBooks" class="text-3xl font-bold text-teal-400">০</h4>
-                    </div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+                <div>
+                    <h2 class="text-4xl font-black text-white italic border-l-8 border-teal-500 pl-6">এডমিন প্যানেল</h2>
+                    <p class="text-slate-400 mt-2 text-xs tracking-widest font-bold">লাইব্রেরী কন্ট্রোল সেন্টার</p>
                 </div>
-                <div class="lg:col-span-3">
-                    <div id="adminBooksList" class="space-y-3"></div>
+                <button onclick="openAddBookModal()" class="bg-teal-500 text-slate-900 px-6 py-3 rounded-2xl font-bold hover:bg-teal-400 transition-all flex items-center gap-2 shadow-xl shadow-teal-500/30">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    নতুন বই যোগ করুন
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                <div class="glass-panel p-6 rounded-3xl border border-white/10">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">মোট বই</p>
+                    <h4 id="statTotalBooks" class="text-3xl font-bold text-teal-400">০</h4>
+                </div>
+                <div class="glass-panel p-6 rounded-3xl border border-white/10">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">সক্রিয় মেম্বার</p>
+                    <h4 id="statTotalMembers" class="text-3xl font-bold text-amber-400">০</h4>
+                </div>
+                <div class="glass-panel p-6 rounded-3xl border border-white/10">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">চলমান লেন্ডিং</p>
+                    <h4 id="statActiveBorrows" class="text-3xl font-bold text-emerald-400">০</h4>
+                </div>
+                <div class="glass-panel p-6 rounded-3xl border border-white/10">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">ফেরত হয়েছে</p>
+                    <h4 id="statReturned" class="text-3xl font-bold text-blue-400">০</h4>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-[2.5rem] overflow-hidden border border-white/10 mb-20">
+                <div class="px-8 py-5 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                    <h3 class="font-bold flex items-center gap-3">
+                        <i data-lucide="list" class="w-5 h-5 text-teal-400"></i>
+                        সাম্প্রতিক লেন্ডিং লিস্ট
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[10px] text-slate-500 font-bold uppercase border-b border-white/5 bg-white/2">
+                                <th class="px-8 py-4">বই</th>
+                                <th class="px-8 py-4">মেম্বার</th>
+                                <th class="px-8 py-4">অবস্থা</th>
+                                <th class="px-8 py-4">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody id="borrowsTableBody" class="divide-y divide-white/5"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
+
+        <!-- Modals -->
+        <div id="addBookModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-lg p-8 rounded-[2.5rem] relative">
+                <button onclick="closeAddBookModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h3 class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">নতুন বই যোগ করুন</h3>
+                <div class="space-y-4">
+                    <input id="newBookTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="বইয়ের নাম *">
+                    <input id="newBookAuthor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="লেখকের নাম *">
+                    <input id="newBookURL" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="কভার ইমেজ URL">
+                    <button onclick="addNewBook()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">বই সেভ করুন</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script type="module">
@@ -425,11 +476,68 @@ public class MainActivity extends Activity {
         });
 
         async function loadBooks() {
-            const snap = await getDocs(collection(db, 'books'));
-            books = snap.docs.map(d => ({id: d.id, ...d.data()}));
-            renderBooks();
-            document.getElementById('statTotalBooks').textContent = books.length;
+            onSnapshot(collection(db, 'books'), snap => {
+                books = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderBooks();
+                document.getElementById('statTotalBooks').textContent = books.length;
+            });
+            
+            onSnapshot(collection(db, 'members'), snap => {
+                document.getElementById('statTotalMembers').textContent = snap.size;
+            });
+
+            onSnapshot(collection(db, 'borrows'), snap => {
+                const borrows = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                document.getElementById('statActiveBorrows').textContent = borrows.filter(b => b.status === 'active').length;
+                document.getElementById('statReturned').textContent = borrows.filter(b => b.status === 'returned').length;
+                renderBorrows(borrows);
+            });
         }
+
+        function renderBorrows(list) {
+            const tbody = document.getElementById('borrowsTableBody');
+            tbody.innerHTML = list.sort((a,b) => b.borrowDate?.seconds - a.borrowDate?.seconds).map(b => `
+                <tr class="text-sm">
+                    <td class="px-8 py-4 font-bold text-white">${b.bookTitle}</td>
+                    <td class="px-8 py-4 text-slate-400">${b.memberName}</td>
+                    <td class="px-8 py-4">
+                        <span class="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase ${b.status === 'active' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">
+                            ${b.status === 'active' ? 'চলমান' : 'ফেরত'}
+                        </span>
+                    </td>
+                    <td class="px-8 py-4">
+                        ${b.status === 'active' ? `<button onclick="returnBook('${b.id}', '${b.bookId}')" class="text-xs font-bold text-teal-400 hover:underline">ফেরত নিন</button>` : '<span class="text-slate-600">-</span>'}
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function addNewBook() {
+            const title = document.getElementById('newBookTitle').value;
+            const author = document.getElementById('newBookAuthor').value;
+            const coverURL = document.getElementById('newBookURL').value;
+            if(!title || !author) return alert("সব তথ্য দিন");
+            
+            try {
+                await addDoc(collection(db, 'books'), { title, author, coverURL, available: true });
+                closeAddBookModal();
+                alert("বই যোগ করা হয়েছে");
+            } catch(e) { alert(e.message); }
+        }
+
+        async function returnBook(bid, bookId) {
+            try {
+                const batch = writeBatch(db);
+                batch.update(doc(db, 'borrows', bid), { status: 'returned' });
+                batch.update(doc(db, 'books', bookId), { available: true });
+                await batch.commit();
+                alert("বই ফেরত নেওয়া হয়েছে");
+            } catch(e) { alert(e.message); }
+        }
+
+        function openAddBookModal() { document.getElementById('addBookModal').classList.remove('hidden'); }
+        function closeAddBookModal() { document.getElementById('addBookModal').classList.add('hidden'); }
 
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
@@ -485,6 +593,10 @@ public class MainActivity extends Activity {
         window.handleSignOut = handleSignOut;
         window.toggleMobileMenu = toggleMobileMenu;
         window.borrowBook = borrowBook;
+        window.openAddBookModal = openAddBookModal;
+        window.closeAddBookModal = closeAddBookModal;
+        window.addNewBook = addNewBook;
+        window.returnBook = returnBook;
 
     </script>
 </body>
