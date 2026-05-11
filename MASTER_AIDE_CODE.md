@@ -60,12 +60,15 @@ package com.gobdha.library;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.Manifest;
+import android.content.pm.PackageManager;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -77,10 +80,16 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
+        // অ্যান্ড্রয়েড ১৩+ এর জন্য নোটিফিকেশন পারমিশন চেক করা
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+            }
+        }
+
         webView = (WebView) findViewById(R.id.myWebView);
         WebSettings webSettings = webView.getSettings();
 
-        // সব গুরুত্বপূর্ণ সেটিংস এনাবল করুন
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
@@ -88,19 +97,13 @@ public class MainActivity extends Activity {
         webSettings.setAllowContentAccess(true);
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setUseWideViewPort(true);
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
 
-        // অ্যাপ যাতে ব্রাউজারে চলে না যায়
         webView.setWebViewClient(new WebViewClient());
-
-        // ফাইল আপলোড ইভেন্ট হ্যান্ডল করার জন্য WebChromeClient যোগ করা হলো
         webView.setWebChromeClient(new WebChromeClient() {
-            // অ্যান্ড্রয়েড ৫.০+ এর জন্য ফাইল পিকার ওপেন করা
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
-                if (mUploadMessage != null) {
-                    mUploadMessage.onReceiveValue(null);
-                }
+                if (mUploadMessage != null) mUploadMessage.onReceiveValue(null);
                 mUploadMessage = filePathCallback;
-
                 Intent intent = fileChooserParams.createIntent();
                 try {
                     startActivityForResult(intent, FILECHOOSER_RESULTCODE);
@@ -112,7 +115,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        // ওয়েবসাইট/লোকাল ফাইল লোড করা
         webView.loadUrl("file:///android_asset/index.html");
     }
 
@@ -697,13 +699,13 @@ public class MainActivity extends Activity {
 
             // নোটিফিকেশন লিসেনার
             const qNotif = query(collection(db, 'notifications'), where('userId', 'in', [currentUser.uid, 'all']));
+            let isInitialLoad = true;
             onSnapshot(qNotif, snap => {
                 snap.docChanges().forEach(change => {
                     if (change.type === "added") {
                         const n = change.doc.data();
-                        const time = n.createdAt?.seconds ? n.createdAt.seconds * 1000 : Date.now();
-                        // যদি নোটিফিকেশনটি গত ৩০ সেকেন্ডের মধ্যে হয়ে থাকে তবেই পপআপ দেখাবে
-                        if (Date.now() - time < 30000) {
+                        // যদি ডাটাবেজ থেকে ডাটা প্রথমবার লোড হবার পর নতুন কিছু এড হয়
+                        if (!isInitialLoad) {
                             showToast(n.title, 'info');
                             if ("Notification" in window && Notification.permission === 'granted') {
                                 new Notification(n.title, { body: n.message });
@@ -712,6 +714,7 @@ public class MainActivity extends Activity {
                     }
                 });
                 
+                isInitialLoad = false;
                 const notifs = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderNotifications(notifs);
                 const unread = notifs.filter(n => !n.read).length;
