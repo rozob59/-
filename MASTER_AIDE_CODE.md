@@ -480,6 +480,10 @@ public class MainActivity extends Activity {
                         <i data-lucide="trash-2" class="w-5 h-5"></i>
                         রিসেট ডাটা
                     </button>
+                    <button onclick="clearNotifications()" class="bg-orange-500/10 border border-orange-500/30 text-orange-400 px-6 py-3 rounded-2xl font-bold hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2 shadow-xl">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        নোটিফিকেশন ক্লিয়ার
+                    </button>
                     <button onclick="openAddBookModal()" class="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center gap-2 shadow-xl">
                         <i data-lucide="plus-circle" class="w-5 h-5 text-teal-400"></i>
                         বই যোগ করুন
@@ -854,6 +858,22 @@ public class MainActivity extends Activity {
             } catch(e) {
                 console.error(e);
                 showToast("রিসেট করতে সমস্যা হয়েছে: "+e.message, "error");
+            }
+        }
+
+        async function clearNotifications() {
+            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে সব নোটিফিকেশন মুছে ফেলতে চান? এটা আবার ফিরিয়ে আনা সম্ভব নয়।");
+            if(!confirmed) return;
+
+            try {
+                const snap = await getDocs(collection(db, 'notifications'));
+                const batch = writeBatch(db);
+                snap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                showToast("সব নোটিফিকেশন সফলভাবে মোছা হয়েছে!");
+            } catch (e) {
+                console.error(e);
+                showToast("নোটিফিকেশনগুলো মুছতে সমস্যা হয়েছে।");
             }
         }
 
@@ -1451,6 +1471,7 @@ public class MainActivity extends Activity {
         window.deleteBook = deleteBook;
         window.handleForgotPassword = handleForgotPassword;
         window.resetSystem = resetSystem;
+        window.clearNotifications = clearNotifications;
 
     </script>
 </body>

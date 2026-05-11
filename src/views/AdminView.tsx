@@ -90,7 +90,7 @@ export function AdminView() {
           <h1 className="text-4xl font-black text-white tracking-tight italic border-l-8 border-teal-500 pl-6 uppercase">এডমিন প্যানেল</h1>
           <p className="text-slate-400 mt-2 uppercase text-xs tracking-widest font-bold">লাইব্রেরী ম্যানেজমেন্ট কন্ট্রোল সেন্টার</p>
         </div>
-        <div className="flex flex-wrap md:flex-nowrap gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap gap-4 w-full md:w-auto">
           <button 
             disabled={resetting}
             onClick={handleSystemReset}
