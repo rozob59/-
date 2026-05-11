@@ -4,6 +4,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Book } from '../types';
 import { useAuth } from '../App';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { Search, Plus, BookOpen, User, Calendar, CheckCircle, XCircle } from 'lucide-react';
 
 export function BooksView() {
@@ -122,8 +123,10 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
         ...formData,
         available: true,
       });
+      toast.success("নতুন বইটি সফলভাবে যোগ করা হয়েছে!");
       onClose();
     } catch (error) {
+      toast.error("বই যোগ করতে সমস্যা হয়েছে!");
       handleFirestoreError(error, OperationType.CREATE, 'books');
     } finally {
       setLoading(false);

@@ -183,12 +183,37 @@ public class MainActivity extends Activity {
             border-radius: 10px;
         }
 
-        /* Animation Classes */
+        /* CSS Animations */
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+        /* Toast Styles */
+        #toast-container { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none; }
+        .toast { 
+            pointer-events: auto;
+            min-width: 280px;
+            max-width: 90vw;
+            padding: 1rem 1.25rem;
+            border-radius: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-success { border-left: 4px solid #2dd4bf; }
+        .toast-error { border-left: 4px solid #f43f5e; }
+        .toast-info { border-left: 4px solid #0ea5e9; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col custom-scrollbar">
@@ -406,6 +431,9 @@ public class MainActivity extends Activity {
         </div>
     </main>
 
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -434,6 +462,36 @@ public class MainActivity extends Activity {
         let isRegistering = false;
         let books = [];
 
+        // টোস্ট নোটিফিকেশন সিস্টেম
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if(!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            let icon = 'check-circle';
+            if(type === 'error') icon = 'alert-circle';
+            if(type === 'info') icon = 'info';
+
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-5 h-5 ${type === 'success' ? 'text-teal-400' : type === 'error' ? 'text-rose-400' : 'text-sky-400'}"></i>
+                <span class="text-sm font-medium">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // এনিমেশন স্টার্ট
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // রিমুভ টোস্ট
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
         // --- মূল ফাংশনসমূহ ---
 
         async function handleAuth() {
@@ -441,7 +499,7 @@ public class MainActivity extends Activity {
             const password = document.getElementById('authPassword').value;
             const name = document.getElementById('authName').value.trim();
             
-            if(!email || !password) return alert("ইমেইল এবং পাসওয়ার্ড দিন");
+            if(!email || !password) return showToast("ইমেইল এবং পাসওয়ার্ড দিন", "error");
             
             const btn = document.getElementById('authSubmitBtn');
             btn.disabled = true;
@@ -481,7 +539,7 @@ public class MainActivity extends Activity {
                 } else if (errorCode === 'auth/too-many-requests') {
                     msg = "অনেকবার ভুল চেষ্টা করা হয়েছে। কিছুক্ষণ পর আবার ট্রাই করুন।";
                 }
-                alert(msg);
+                showToast(msg, "error");
                 btn.disabled = false;
                 btn.textContent = isRegistering ? "একাউন্ট খুলুন" : "লগইন করুন";
             }
@@ -572,7 +630,7 @@ public class MainActivity extends Activity {
                 const file = e.target.files[0];
                 if (file) {
                     if(file.size > 800 * 1024) {
-                        alert("ফাইল সাইজ ৮০০ কেবি এর কম হতে হবে");
+                        showToast("ফাইল সাইজ ৮০০ কেবি এর কম হতে হবে", "error");
                         e.target.value = '';
                         return;
                     }
@@ -604,7 +662,7 @@ public class MainActivity extends Activity {
             let coverURL = urlEl ? urlEl.value.trim() : "";
             
             if(!title || !author) {
-                alert("দয়া করে বইয়ের নাম এবং লেখকের নাম সঠিকভাবে দিন।");
+                showToast("দয়া করে বইয়ের নাম এবং লেখকের নাম সঠিকভাবে দিন।", "error");
                 return;
             }
 
@@ -628,7 +686,7 @@ public class MainActivity extends Activity {
                     createdAt: serverTimestamp() 
                 });
                 
-                alert("অভিনন্দন! বইটি সফলভাবে সেভ হয়েছে।");
+                showToast("অভিনন্দন! বইটি সফলভাবে সেভ হয়েছে।", "success");
                 closeAddBookModal();
                 
                 // ফরম রিসেট
@@ -643,7 +701,7 @@ public class MainActivity extends Activity {
                 lucide.createIcons();
             } catch(e) { 
                 console.error("Firestore Error:", e);
-                alert("সার্ভার সমস্যা: " + e.message); 
+                showToast("সার্ভার সমস্যা: " + e.message, "error"); 
             } finally {
                 if(btn) {
                     btn.disabled = false;
@@ -658,8 +716,8 @@ public class MainActivity extends Activity {
                 batch.update(doc(db, 'borrows', bid), { status: 'returned' });
                 batch.update(doc(db, 'books', bookId), { available: true });
                 await batch.commit();
-                alert("বই ফেরত নেওয়া হয়েছে");
-            } catch(e) { alert(e.message); }
+                showToast("বই ফেরত নেওয়া হয়েছে", "success");
+            } catch(e) { showToast(e.message, "error"); }
         }
 
         async function deleteBook(id) {
@@ -667,11 +725,11 @@ public class MainActivity extends Activity {
             if(!confirm("আপনি কি নিশ্চিত যে এই বইটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।")) return;
             try {
                 await deleteDoc(doc(db, 'books', id));
-                alert("বইটি সফলভাবে মুছে ফেলা হয়েছে।");
+                showToast("বইটি সফলভাবে মুছে ফেলা হয়েছে।", "success");
                 if(typeof loadBooks === 'function') loadBooks(); // রিফ্রেশ লিস্ট
             } catch(e) {
                 console.error("Delete Error:", e);
-                alert("ভুল হয়েছে: " + (e.message || "Unknown error"));
+                showToast("ভুল হয়েছে: " + (e.message || "Unknown error"), "error");
             }
         }
 
@@ -717,7 +775,7 @@ public class MainActivity extends Activity {
             });
             batch.update(doc(db, 'books', id), { available: false });
             await batch.commit();
-            alert("সফলভাবে বই রিযার্ভ করা হয়েছে!");
+            showToast("সফলভাবে বই রিযার্ভ করা হয়েছে!", "success");
             loadBooks();
         }
 

@@ -5,6 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Member, Book, BorrowRecord } from '../types';
 import { useAuth } from '../App';
 import { motion } from 'motion/react';
+import { toast } from 'sonner';
 import { Users, BookOpen, Send, UserPlus, CheckCircle, Clock, XCircle, Plus, Trash2 } from 'lucide-react';
 
 export function AdminView() {
@@ -169,7 +170,9 @@ export function AdminView() {
                                 try {
                                   await updateDoc(doc(db, 'borrows', borrow.id), { status: 'returned', returnDate: serverTimestamp() });
                                   await updateDoc(doc(db, 'books', borrow.bookId), { available: true });
+                                  toast.success("বইটি ফেরত নেওয়া হয়েছে!");
                                 } catch (e) {
+                                  toast.error("বই ফেরত নিতে সমস্যা হয়েছে!");
                                   handleFirestoreError(e, OperationType.UPDATE, `borrows/${borrow.id}`);
                                 }
                               }}
@@ -241,8 +244,10 @@ export function AdminView() {
                               console.log("Proceeding with deletion of:", book.id);
                               await deleteDoc(doc(db, 'books', book.id));
                               console.log("Deletion successful");
+                              toast.success("বইটি সফলভাবে মুছে ফেলা হয়েছে!");
                             } catch (e) {
                               console.error("Deletion failed:", e);
+                              toast.error("বই মুছতে সমস্যা হয়েছে!");
                               handleFirestoreError(e, OperationType.DELETE, `books/${book.id}`);
                             }
                           }
@@ -310,9 +315,11 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
         available: true,
         createdAt: serverTimestamp()
       });
+      toast.success("নতুন বইটি সফলভাবে যোগ করা হয়েছে!");
       onClose();
     } catch (err: any) {
       console.error(err);
+      toast.error("বই সেভ করতে সমস্যা হয়েছে!");
       setError("বই সেভ করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);
@@ -425,8 +432,10 @@ function IssueBookModal({ books, members, onClose }: { books: Book[], members: M
       await updateDoc(doc(db, 'books', selectedBook), {
         available: false
       });
+      toast.success("বইটি সফলভাবে ইস্যু করা হয়েছে!");
       onClose();
     } catch (error) {
+      toast.error("বই ইস্যু করতে সমস্যা হয়েছে!");
       handleFirestoreError(error, OperationType.WRITE, 'borrows/books');
     } finally {
       setLoading(false);
@@ -510,8 +519,10 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
         ...formData,
         joinedAt: serverTimestamp(),
       });
+      toast.success("নতুন সদস্য সফলভাবে যোগ করা হয়েছে!");
       onClose();
     } catch (error) {
+      toast.error("সদস্য যোগ করতে সমস্যা হয়েছে!");
       handleFirestoreError(error, OperationType.CREATE, 'members');
     } finally {
       setLoading(false);
@@ -585,8 +596,10 @@ function NotifyUserModal({ user, onClose }: { user: Member, onClose: () => void 
         createdAt: serverTimestamp(),
         read: false
       });
+      toast.success("নোটিফিকেশন সফলভাবে পাঠানো হয়েছে!");
       onClose();
     } catch (error) {
+      toast.error("নোটিফিকেশন পাঠাতে সমস্যা হয়েছে!");
       handleFirestoreError(error, OperationType.CREATE, 'notifications');
     } finally {
       setLoading(false);

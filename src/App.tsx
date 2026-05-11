@@ -15,6 +15,7 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { Member } from './types';
+import { Toaster } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -433,6 +434,7 @@ export default function App() {
     <Router>
       <AuthProvider>
         <div className="min-h-screen bg-transparent font-sans text-slate-100 selection:bg-teal-500/30">
+          <Toaster position="bottom-center" richColors theme="dark" />
           <Navbar />
           <main>
             <Routes>
