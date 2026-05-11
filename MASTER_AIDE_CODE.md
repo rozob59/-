@@ -861,17 +861,31 @@ public class MainActivity extends Activity {
         }
 
         async function clearNotifications() {
-            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে সব নোটিফিকেশন মুছে ফেলতে চান?");
+            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে সব নোটিফিকেশন ক্লিয়ার করতে চান? (ব্যক্তিগতগুলো মুছে যাবে, সাধারণগুলো 'পড়া হয়েছে' হিসেবে গণ্য হবে)");
             if(!confirmed) return;
 
             try {
-                // Assuming currentUser.uid is available
                 if(!currentUser) return;
-                const q = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid));
-                const snap = await getDocs(q);
+                
+                // ব্যক্তিগতগুলো ডিলিট
+                const qPersonal = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid));
+                const snapPersonal = await getDocs(qPersonal);
+                
+                // সাধারণগুলো মার্ক এস রিড
+                const qAll = query(collection(db, 'notifications'), where('userId', '==', 'all'));
+                const snapAll = await getDocs(qAll);
+                
+                if (snapPersonal.docs.length === 0 && snapAll.docs.length === 0) {
+                    showToast("কোনো নোটিফিকেশন নেই।", "info");
+                    return;
+                }
                 
                 const batch = writeBatch(db);
-                snap.docs.forEach(d => batch.delete(d.ref));
+                snapPersonal.docs.forEach(d => batch.delete(d.ref));
+                snapAll.docs.forEach(d => {
+                    if (!d.data().read) batch.update(d.ref, { read: true });
+                });
+                
                 await batch.commit();
                 showToast("সব নোটিফিকেশন ক্লিয়ার করা হয়েছে।", "success");
             } catch (e) {
