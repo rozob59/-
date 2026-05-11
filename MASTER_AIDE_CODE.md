@@ -663,12 +663,15 @@ public class MainActivity extends Activity {
         }
 
         async function deleteBook(id) {
-            if(!confirm("আপনি কি নিশ্চিত যে এই বইটি মুছে ফেলতে চান?")) return;
+            console.log("Attempting to delete book:", id);
+            if(!confirm("আপনি কি নিশ্চিত যে এই বইটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।")) return;
             try {
                 await deleteDoc(doc(db, 'books', id));
-                alert("বইটি মুছে ফেলা হয়েছে।");
+                alert("বইটি সফলভাবে মুছে ফেলা হয়েছে।");
+                if(typeof loadBooks === 'function') loadBooks(); // রিফ্রেশ লিস্ট
             } catch(e) {
-                alert("ভুল হয়েছে: " + e.message);
+                console.error("Delete Error:", e);
+                alert("ভুল হয়েছে: " + (e.message || "Unknown error"));
             }
         }
 
@@ -677,12 +680,15 @@ public class MainActivity extends Activity {
 
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
-            const isAdmin = currentUser && currentUser.email === 'rozobali01321786059@gmail.com'; // এডমিন চেক
+            if(!grid) return;
+            
+            // এডমিন চেক (Case Insensitive)
+            const isAdmin = currentUser && currentUser.email && currentUser.email.toLowerCase() === 'rozobali01321786059@gmail.com';
             
             grid.innerHTML = books.map(b => `
                 <div class="glass-panel p-4 rounded-3xl flex flex-col h-full fade-in relative group">
                     ${isAdmin ? `
-                        <button onclick="deleteBook('${b.id}')" class="absolute top-2 right-2 p-2 bg-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-10">
+                        <button onclick="event.stopPropagation(); deleteBook('${b.id}')" class="absolute top-2 right-2 p-2 bg-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all z-20 shadow-lg">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     ` : ''}

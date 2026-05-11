@@ -235,10 +235,14 @@ export function AdminView() {
                     <td className="px-8 py-5 text-right">
                       <button 
                         onClick={async () => {
+                          console.log("Delete button clicked for book:", book.id);
                           if (window.confirm('আপনি কি নিশ্চিত যে আপনি এই বইটি ডিলিট করতে চান? এটি আর ফিরিয়ে আনা যাবে না।')) {
                             try {
+                              console.log("Proceeding with deletion of:", book.id);
                               await deleteDoc(doc(db, 'books', book.id));
+                              console.log("Deletion successful");
                             } catch (e) {
+                              console.error("Deletion failed:", e);
                               handleFirestoreError(e, OperationType.DELETE, `books/${book.id}`);
                             }
                           }
