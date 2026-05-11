@@ -196,7 +196,7 @@ public class MainActivity extends Activity {
 
 ### **৪. index.html (Assets ফাইলে বসাবেন)**
 পাথ: `app/src/main/assets/index.html`        
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1488,6 +1488,7 @@ public class MainActivity extends Activity {
     </script>
 </body>
 </html>
+'''
 
 ## **⚠️ অতি জরুরি কাজ (এইটা না করলে লগইন হবে না)**
 ফায়ারবেস সাইটে গিয়ে **Email/Password** অপশনটি চালু করতে হবে:
