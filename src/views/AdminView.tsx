@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { collection, onSnapshot, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Member, Book, BorrowRecord } from '../types';
 import { useAuth } from '../App';
 import { motion } from 'motion/react';
-import { Users, BookOpen, Send, UserPlus, CheckCircle, Clock, XCircle, Plus } from 'lucide-react';
+import { Users, BookOpen, Send, UserPlus, CheckCircle, Clock, XCircle, Plus, Trash2 } from 'lucide-react';
 
 export function AdminView() {
   const { profile, loading: authLoading } = useAuth();
@@ -71,7 +71,7 @@ export function AdminView() {
         <StatCard icon={<CheckCircle className="text-blue-400" />} label="ফেরত হয়েছে" value={borrows.filter(b => b.status === 'returned').length} />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-8 mb-8">
         {/* Members List */}
         <div className="lg:col-span-2">
           <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
@@ -186,6 +186,74 @@ export function AdminView() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Books Management Section */}
+      <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl mt-8">
+        <div className="px-8 py-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+          <h2 className="text-xl font-bold text-white flex items-center gap-4 uppercase tracking-tight italic">
+            <BookOpen className="w-6 h-6 text-teal-400" />
+            বইসমূহ ম্যানেজ করুন
+          </h2>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{books.length} টি বই আছে</span>
+        </div>
+        <div className="overflow-x-auto">
+          {books.length === 0 ? (
+            <div className="p-10 text-center text-slate-500 italic">এখনো কোনো বই নেই</div>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-white/2 text-slate-500 text-[11px] font-bold uppercase tracking-[0.2em]">
+                  <th className="px-8 py-5">বই</th>
+                  <th className="px-8 py-5">লেখক</th>
+                  <th className="px-8 py-5">স্ট্যাটাস</th>
+                  <th className="px-8 py-5 text-right">অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {books.map(book => (
+                  <tr key={book.id} className="hover:bg-white/5 transition-all group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-14 rounded-lg bg-white/5 border border-white/10 flex-shrink-0 overflow-hidden shadow-lg group-hover:scale-105 transition-all">
+                          {book.coverURL ? (
+                            <img src={book.coverURL} alt={book.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <BookOpen className="w-5 h-5 text-slate-700 m-auto" />
+                          )}
+                        </div>
+                        <span className="text-sm font-bold text-white line-clamp-1">{book.title}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 text-sm text-slate-400">{book.author}</td>
+                    <td className="px-8 py-5">
+                      <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest ${book.available ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/20 text-amber-400 border border-amber-500/20'}`}>
+                        {book.available ? 'এভেইলেবল' : 'ধার হয়েছে'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <button 
+                        onClick={async () => {
+                          if (window.confirm('আপনি কি নিশ্চিত যে আপনি এই বইটি ডিলিট করতে চান? এটি আর ফিরিয়ে আনা যাবে না।')) {
+                            try {
+                              await deleteDoc(doc(db, 'books', book.id));
+                            } catch (e) {
+                              handleFirestoreError(e, OperationType.DELETE, `books/${book.id}`);
+                            }
+                          }
+                        }}
+                        className="w-10 h-10 rounded-xl bg-white/5 inline-flex items-center justify-center text-slate-400 hover:bg-red-500 hover:text-white transition-all hover:scale-110 active:scale-95 shadow-lg"
+                        title="Delete Book"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

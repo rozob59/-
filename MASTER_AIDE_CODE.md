@@ -409,7 +409,7 @@ public class MainActivity extends Activity {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, query, collection, orderBy, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, collection, orderBy, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
         const firebaseConfig = {
@@ -662,13 +662,30 @@ public class MainActivity extends Activity {
             } catch(e) { alert(e.message); }
         }
 
+        async function deleteBook(id) {
+            if(!confirm("আপনি কি নিশ্চিত যে এই বইটি মুছে ফেলতে চান?")) return;
+            try {
+                await deleteDoc(doc(db, 'books', id));
+                alert("বইটি মুছে ফেলা হয়েছে।");
+            } catch(e) {
+                alert("ভুল হয়েছে: " + e.message);
+            }
+        }
+
         function openAddBookModal() { document.getElementById('addBookModal').classList.remove('hidden'); }
         function closeAddBookModal() { document.getElementById('addBookModal').classList.add('hidden'); }
 
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
+            const isAdmin = currentUser && currentUser.email === 'rozobali01321786059@gmail.com'; // এডমিন চেক
+            
             grid.innerHTML = books.map(b => `
-                <div class="glass-panel p-4 rounded-3xl flex flex-col h-full fade-in">
+                <div class="glass-panel p-4 rounded-3xl flex flex-col h-full fade-in relative group">
+                    ${isAdmin ? `
+                        <button onclick="deleteBook('${b.id}')" class="absolute top-2 right-2 p-2 bg-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-10">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    ` : ''}
                     <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden">
                         ${b.coverURL ? `<img src="${b.coverURL}" class="w-full h-full object-cover" />` : '<div class="w-full h-full flex items-center justify-center italic text-xs text-slate-600">No Image</div>'}
                     </div>
@@ -723,6 +740,7 @@ public class MainActivity extends Activity {
         window.closeAddBookModal = closeAddBookModal;
         window.addNewBook = addNewBook;
         window.returnBook = returnBook;
+        window.deleteBook = deleteBook;
 
     </script>
 </body>
