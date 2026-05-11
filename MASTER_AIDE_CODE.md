@@ -291,8 +291,26 @@ public class MainActivity extends Activity {
         <div class="flex flex-col items-center">
             <div class="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin"></div>
             <p class="mt-4 text-teal-400 font-medium pulse">লোডিং হচ্ছে...</p>
+            <p id="debugError" class="mt-4 text-rose-500 font-medium text-center text-sm px-4 max-w-sm whitespace-pre-wrap flex-col"></p>
         </div>
     </div>
+
+    <!-- Error Monitoring -->
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            var errP = document.getElementById('debugError');
+            if (errP) {
+                errP.textContent += "Error: " + msg + " at line " + lineNo + "\n";
+            }
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            var errP = document.getElementById('debugError');
+            if (errP) {
+                errP.textContent += "Promise Error: " + (event.reason ? event.reason.message || event.reason : "Unknown error") + "\n";
+            }
+        });
+    </script>
 
 
     <!-- Auth Guard -->
@@ -698,7 +716,7 @@ public class MainActivity extends Activity {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
         const firebaseConfig = {
@@ -714,10 +732,8 @@ public class MainActivity extends Activity {
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         
-        // অফলাইন পারসিস্টেন্স সহ ফায়ারস্টোর এনাবল করা
-        const db = initializeFirestore(app, {
-            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-        }, firebaseConfig.firestoreDatabaseId);
+        // ফায়ারস্টোর এনাবল করা
+        const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
         let currentUser = null;
         let isRegistering = false;
