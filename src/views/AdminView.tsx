@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Member, Book, BorrowRecord } from '../types';
 import { useAuth } from '../App';
@@ -61,6 +61,25 @@ export function AdminView() {
     }
   };
 
+  const handleClearAllNotifications = async () => {
+    if (!window.confirm('আপনি কি নিশ্চিত যে সব নোটিফিকেশন মুছে ফেলতে চান? এটা আবার ফিরিয়ে আনা সম্ভব নয়।')) return;
+    
+    setResetting(true);
+    try {
+      const snap = await getDocs(collection(db, 'notifications'));
+      const batch = writeBatch(db);
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      toast.success("সব নোটিফিকেশন সফলভাবে মোছা হয়েছে!");
+    } catch (e) {
+      console.error(e);
+      toast.error("নোটিফিকেশনগুলো মুছতে সমস্যা হয়েছে।");
+      handleFirestoreError(e, OperationType.WRITE, 'notifications');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (authLoading) return <div className="p-20 text-center text-white">অপেক্ষা করুন...</div>;
   if (!profile || profile.role !== 'admin') return <Navigate to="/" />;
 
@@ -79,6 +98,14 @@ export function AdminView() {
           >
             <Trash2 className="w-5 h-5" />
             রিসেট ডাটা
+          </button>
+          <button 
+            disabled={resetting}
+            onClick={handleClearAllNotifications}
+            className="flex-1 md:flex-none border border-orange-500/30 text-orange-400 px-6 py-4 rounded-[2rem] font-bold hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            <Trash2 className="w-5 h-5" />
+            নোটিফিকেশন ক্লিয়ার
           </button>
           <button 
             onClick={() => setShowAddBook(true)}

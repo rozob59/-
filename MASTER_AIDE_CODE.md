@@ -464,9 +464,6 @@ public class MainActivity extends Activity {
                 <h2 class="text-3xl font-bold italic border-l-4 border-sky-500 pl-4">নোটিফিকেশনস</h2>
                 <div class="flex items-center gap-4">
                 <span id="unreadCountBadge" class="hidden bg-teal-500/20 text-teal-400 border border-teal-500/30 px-4 py-1.5 rounded-full text-xs font-bold fade-in"></span>
-                <button onclick="clearNotifications()" class="bg-rose-500/10 text-rose-400 p-2 rounded-lg hover:bg-rose-500 hover:text-white transition-all">
-                    <i data-lucide="trash-2" class="w-5 h-5"></i>
-                </button>
             </div>
         </div>
             <div id="notificationsList" class="space-y-4"></div>
@@ -857,40 +854,6 @@ public class MainActivity extends Activity {
             } catch(e) {
                 console.error(e);
                 showToast("রিসেট করতে সমস্যা হয়েছে: "+e.message, "error");
-            }
-        }
-
-        async function clearNotifications() {
-            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে সব নোটিফিকেশন ক্লিয়ার করতে চান? (ব্যক্তিগতগুলো মুছে যাবে, সাধারণগুলো 'পড়া হয়েছে' হিসেবে গণ্য হবে)");
-            if(!confirmed) return;
-
-            try {
-                if(!currentUser) return;
-                
-                // ব্যক্তিগতগুলো ডিলিট
-                const qPersonal = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid));
-                const snapPersonal = await getDocs(qPersonal);
-                
-                // সাধারণগুলো মার্ক এস রিড
-                const qAll = query(collection(db, 'notifications'), where('userId', '==', 'all'));
-                const snapAll = await getDocs(qAll);
-                
-                if (snapPersonal.docs.length === 0 && snapAll.docs.length === 0) {
-                    showToast("কোনো নোটিফিকেশন নেই।", "info");
-                    return;
-                }
-                
-                const batch = writeBatch(db);
-                snapPersonal.docs.forEach(d => batch.delete(d.ref));
-                snapAll.docs.forEach(d => {
-                    if (!d.data().read) batch.update(d.ref, { read: true });
-                });
-                
-                await batch.commit();
-                showToast("সব নোটিফিকেশন ক্লিয়ার করা হয়েছে।", "success");
-            } catch (e) {
-                console.error(e);
-                showToast("নোটিফিকেশন ক্লিয়ার করতে সমস্যা হয়েছে।", "error");
             }
         }
 
@@ -1488,7 +1451,6 @@ public class MainActivity extends Activity {
         window.deleteBook = deleteBook;
         window.handleForgotPassword = handleForgotPassword;
         window.resetSystem = resetSystem;
-        window.clearNotifications = clearNotifications;
 
     </script>
 </body>
