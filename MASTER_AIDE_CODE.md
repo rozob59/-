@@ -346,9 +346,18 @@ public class MainActivity extends Activity {
                 <button onclick="closeAddBookModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
                 <h3 class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">নতুন বই যোগ করুন</h3>
                 <div class="space-y-4">
+                    <div class="flex flex-col items-center mb-4">
+                        <label class="cursor-pointer group flex flex-col items-center">
+                            <div id="coverPreview" class="w-24 h-32 bg-white/5 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center overflow-hidden relative">
+                                <i data-lucide="camera" class="w-6 h-6 text-slate-500"></i>
+                                <span class="text-[9px] uppercase font-bold text-slate-500 mt-1 uppercase">ফটো আপলোড</span>
+                            </div>
+                            <input type="file" id="bookCoverFile" class="hidden" accept="image/*" onchange="previewCover(event)">
+                        </label>
+                    </div>
                     <input id="newBookTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="বইয়ের নাম *">
                     <input id="newBookAuthor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="লেখকের নাম *">
-                    <input id="newBookURL" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="কভার ইমেজ URL">
+                    <input id="newBookURL" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="অথবা ড্রপবক্স/গুগল ইমেজ লিংক">
                     <button onclick="addNewBook()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">বই সেভ করুন</button>
                 </div>
             </div>
@@ -513,16 +522,36 @@ public class MainActivity extends Activity {
             lucide.createIcons();
         }
 
+        let selectedCoverBase64 = null;
+
+        function previewCover(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if(file.size > 1024 * 1024) return alert("ফাইল সাইজ ১ মেগাবাইটের কম হতে হবে");
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    selectedCoverBase64 = e.target.result;
+                    document.getElementById('coverPreview').innerHTML = `<img src="${selectedCoverBase64}" class="w-full h-full object-cover">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
         async function addNewBook() {
             const title = document.getElementById('newBookTitle').value;
             const author = document.getElementById('newBookAuthor').value;
-            const coverURL = document.getElementById('newBookURL').value;
+            let coverURL = document.getElementById('newBookURL').value;
+            
+            if(selectedCoverBase64) coverURL = selectedCoverBase64;
             if(!title || !author) return alert("সব তথ্য দিন");
             
             try {
                 await addDoc(collection(db, 'books'), { title, author, coverURL, available: true });
                 closeAddBookModal();
                 alert("বই যোগ করা হয়েছে");
+                selectedCoverBase64 = null;
+                document.getElementById('coverPreview').innerHTML = `<i data-lucide="camera" class="w-6 h-6 text-slate-500"></i><span class="text-[9px] uppercase font-bold text-slate-500 mt-1">ফটো আপলোড</span>`;
+                lucide.createIcons();
             } catch(e) { alert(e.message); }
         }
 

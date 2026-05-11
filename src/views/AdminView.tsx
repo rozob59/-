@@ -202,6 +202,24 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
     title: '', author: '', isbn: '', category: '', description: '', coverURL: ''
   });
   const [loading, setLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit for Firestore
+        alert("ফাইল সাইজ ১ মেগাবাইটের কম হতে হবে।");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImagePreview(base64String);
+        setFormData({ ...formData, coverURL: base64String });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,8 +248,23 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
           <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">নতুন বই যোগ করুন</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><XCircle className="w-8 h-8" /></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 text-center">
+               <label className="cursor-pointer group">
+                  <div className="w-32 h-44 mx-auto rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-teal-500/50 transition-all overflow-hidden bg-white/5 relative">
+                    {imagePreview || formData.coverURL ? (
+                      <img src={imagePreview || formData.coverURL} className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <Plus className="w-8 h-8 text-slate-500 group-hover:text-teal-400" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">কভার আপলোড</span>
+                      </>
+                    )}
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+               </label>
+            </div>
             <div className="col-span-2">
               <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">বইয়ের নাম *</label>
               <input 
@@ -260,11 +293,14 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">বইয়ের কভার URL</label>
+            <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">অথবা কভার ইমেজ URL</label>
             <input 
               className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
               value={formData.coverURL}
-              onChange={(e) => setFormData({...formData, coverURL: e.target.value})}
+              onChange={(e) => {
+                setFormData({...formData, coverURL: e.target.value});
+                setImagePreview(null);
+              }}
               placeholder="https://..."
             />
           </div>
