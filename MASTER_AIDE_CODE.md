@@ -307,7 +307,7 @@ public class MainActivity extends Activity {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, getDocs, setDoc, query, collection, orderBy, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, query, collection, orderBy, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
         const firebaseConfig = {
@@ -322,7 +322,11 @@ public class MainActivity extends Activity {
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+        
+        // অফলাইন পারসিস্টেন্স সহ ফায়ারস্টোর এনাবল করা
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        }, firebaseConfig.firestoreDatabaseId);
 
         let currentUser = null;
         let isRegistering = false;
