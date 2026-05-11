@@ -471,7 +471,7 @@ public class MainActivity extends Activity {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
         const firebaseConfig = {
@@ -679,11 +679,11 @@ public class MainActivity extends Activity {
                 books = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderBooks();
                 document.getElementById('statTotalBooks').textContent = books.length;
-            });
+            }, e => console.error("Books onSnapshot error:", e));
             
             onSnapshot(collection(db, 'members'), snap => {
                 document.getElementById('statTotalMembers').textContent = snap.size;
-            });
+            }, e => console.error("Members onSnapshot error:", e));
 
             onSnapshot(collection(db, 'borrows'), snap => {
                 const borrows = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -695,7 +695,7 @@ public class MainActivity extends Activity {
                 const myActive = borrows.filter(b => b.memberId === currentUser.uid);
                 renderMyBorrows(myActive);
                 checkReminders(myActive.filter(b => b.status === 'active'));
-            });
+            }, e => console.error("Borrows onSnapshot error:", e));
 
             // নোটিফিকেশন লিসেনার
             const qNotif = query(collection(db, 'notifications'), where('userId', 'in', [currentUser.uid, 'all']));
@@ -721,6 +721,12 @@ public class MainActivity extends Activity {
                 const badge = document.getElementById('notifBadge');
                 if(badge) {
                     badge.classList.toggle('hidden', unread === 0);
+                }
+            }, e => {
+                console.error("Notifications onSnapshot error:", e);
+                const container = document.getElementById('notificationsList');
+                if(container && isInitialLoad) {
+                    container.innerHTML = `<div class="py-10 text-center text-rose-400">ত্রুটি: নোটিফিকেশন লোড করা যায়নি (ইন্ডেক্স তৈরি হতে পারে)</div>`;
                 }
             });
         }

@@ -20,7 +20,14 @@ export function NotificationsView() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification)));
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification));
+      // Client-side sort by date descending
+      data.sort((a, b) => {
+        const dateA = (a.createdAt as any)?.toDate?.() || new Date(0);
+        const dateB = (b.createdAt as any)?.toDate?.() || new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+      setNotifications(data);
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'notifications');
