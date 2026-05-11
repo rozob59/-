@@ -357,49 +357,66 @@ function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
 
 function Home() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <div className="text-center mb-16">
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Hero Section */}
+      <div className="text-center mb-16 py-12">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-black uppercase tracking-widest mb-8"
+        >
+          <Bell className="w-3 h-3" />
+          সবচেয়ে বড় অনলাইন লাইব্রেরী কালেকশন
+        </motion.div>
+        
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl font-bold text-white mb-6 tracking-tight"
+          className="text-6xl md:text-8xl font-black text-white mb-8 tracking-tighter leading-[0.95]"
         >
-          বইয়ের জগতে <span className="text-teal-400">আপনাকে স্বাগতম</span>
+          বই করুন সংগ্রহ <br/>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400">জ্ঞান হোক প্রসারিত</span>
         </motion.h1>
+        
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed"
+          className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10"
         >
-          আপনার প্রিয় বই খুঁজে নিন এবং জ্ঞানচর্চায় মেতে উঠুন। দক্ষিণ গোবধা পাবলিক লাইব্রেরী এখন আরও সহজ এবং আধুনিক।
+          দক্ষিণ গোবধা পাবলিক লাইব্রেরী। এখন আপনার হাতের মুঠোয়। যেকোনো সময় যেকোনো জায়গা থেকে আপনার বই ট্র্যাক করুন।
         </motion.p>
+        
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className="mt-8 flex justify-center gap-4"
+          className="flex justify-center gap-4"
         >
-          <Link to="/books" className="bg-teal-500 text-slate-900 px-8 py-3 rounded-full font-bold hover:bg-teal-400 transition-all flex items-center gap-2 group shadow-xl shadow-teal-500/20">
-            বই দেখুন
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <Link to="/books" className="bg-teal-500 text-slate-900 px-10 py-5 rounded-[2rem] font-black text-xl hover:bg-teal-400 transition-all flex items-center gap-2 group shadow-2xl shadow-teal-500/20 active:scale-95">
+            বইসমূহ দেখুন
+            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
           </Link>
         </motion.div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
+      {/* Feature Grid */}
+      <div className="grid md:grid-cols-3 gap-6 mb-20">
         <FeatureCard 
-          icon={<BookIcon className="w-6 h-6 text-teal-400" />}
+          icon={<BookIcon className="w-8 h-8 text-teal-400" />}
+          iconColor="bg-teal-500/10"
           title="বিশাল সংগ্রহ"
           description="আমাদের সংগ্রহে রয়েছে কয়েক হাজার বই যা আপনি যেকোনো সময় নিতে পারবেন।"
         />
         <FeatureCard 
-          icon={<Bell className="w-6 h-6 text-rose-400" />}
+          icon={<Bell className="w-8 h-8 text-rose-400" />}
+          iconColor="bg-rose-500/10"
           title="স্মার্ট নোটিফিকেশন"
           description="বইয়ের ফেরত দেওয়ার সময় হলে বা নতুন নতুন বই আসলে অটোমেটিক আপডেট পান।"
         />
         <FeatureCard 
-          icon={<History className="w-6 h-6 text-emerald-400" />}
+          icon={<History className="w-8 h-8 text-emerald-400" />}
+          iconColor="bg-emerald-500/10"
           title="সহজ ট্র্যাকিং"
           description="আপনি কবে কোন বই নিয়েছিলেন তার সব রেকর্ড আপনার হাতের মুঠোয়।"
         />
@@ -408,17 +425,17 @@ function Home() {
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function FeatureCard({ icon, iconColor, title, description }: { icon: React.ReactNode, iconColor: string, title: string, description: string }) {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className="p-8 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 shadow-sm hover:shadow-2xl hover:bg-white/10 transition-all"
+      className="p-10 bg-white/5 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-sm hover:shadow-2xl hover:bg-white/10 transition-all group"
     >
-      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mb-6">
+      <div className={`w-16 h-16 ${iconColor} rounded-[1.5rem] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}>
         {icon}
       </div>
-      <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-      <p className="text-slate-400 leading-relaxed">{description}</p>
+      <h3 className="text-2xl font-bold text-white mb-4 italic">{title}</h3>
+      <p className="text-slate-400 leading-relaxed font-medium">{description}</p>
     </motion.div>
   );
 }
@@ -454,7 +471,11 @@ function ReminderManager() {
           const createdAt = (data.createdAt as any)?.toDate?.() || new Date();
           if (new Date().getTime() - createdAt.getTime() < 30000) {
             toast.info(data.title, { description: data.message });
-            if (Notification.permission === 'granted') {
+            
+            // অ্যান্ড্রয়েড নেটিভ নোটিফিকেশন ব্রিজ চেক
+            if (typeof (window as any).Android !== 'undefined' && (window as any).Android.showNotification) {
+              (window as any).Android.showNotification(data.title, data.message);
+            } else if ('Notification' in window && Notification.permission === 'granted') {
               new Notification(data.title, { body: data.message });
             }
           }
@@ -486,7 +507,10 @@ function ReminderManager() {
             const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
             const msg = `রিমাইন্ডার: "${bookTitle}" ফেরত দেওয়ার সময় আগামীকাল!`;
             toast.info(msg, { duration: 10000 });
-            if (Notification.permission === 'granted') {
+            
+            if (typeof (window as any).Android !== 'undefined' && (window as any).Android.showNotification) {
+              (window as any).Android.showNotification('লাইব্রেরী রিমাইন্ডার', msg);
+            } else if ('Notification' in window && Notification.permission === 'granted') {
               new Notification('লাইব্রেরী রিমাইন্ডার', { body: msg });
             }
           } else if (dueDate <= now) {
@@ -494,7 +518,10 @@ function ReminderManager() {
              const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
              const msg = `এলার্ট: "${bookTitle}" ফেরত দেওয়ার সময় পার হয়ে গেছে!`;
              toast.error(msg, { duration: 15000 });
-             if (Notification.permission === 'granted') {
+             
+             if (typeof (window as any).Android !== 'undefined' && (window as any).Android.showNotification) {
+               (window as any).Android.showNotification('লাইব্রেরী এলার্ট', msg);
+             } else if ('Notification' in window && Notification.permission === 'granted') {
                new Notification('লাইব্রেরী এলার্ট', { body: msg });
              }
           }

@@ -47,19 +47,19 @@ export function AdminView() {
           <h1 className="text-4xl font-black text-white tracking-tight italic border-l-8 border-teal-500 pl-6 uppercase">এডমিন প্যানেল</h1>
           <p className="text-slate-400 mt-2 uppercase text-xs tracking-widest font-bold">লাইব্রেরী ম্যানেজমেন্ট কন্ট্রোল সেন্টার</p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap md:flex-nowrap gap-4 w-full md:w-auto">
           <button 
             onClick={() => setShowAddBook(true)}
-            className="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center gap-2 shadow-xl"
+            className="flex-1 md:flex-none bg-white/5 border border-white/10 text-white px-8 py-4 rounded-[2rem] font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-3 shadow-xl"
           >
-            <Plus className="w-5 h-5 text-teal-400" />
+            <Plus className="w-6 h-6 text-teal-400" />
             বই যোগ করুন
           </button>
           <button 
             onClick={() => setShowIssue(true)}
-            className="bg-teal-500 text-slate-900 px-6 py-3 rounded-2xl font-bold hover:bg-teal-400 transition-all flex items-center gap-2 shadow-xl shadow-teal-500/30"
+            className="flex-1 md:flex-none bg-teal-500 text-slate-900 px-8 py-4 rounded-[2rem] font-bold hover:bg-teal-400 transition-all flex items-center justify-center gap-3 shadow-xl shadow-teal-500/30"
           >
-            <BookOpen className="w-5 h-5" />
+            <BookOpen className="w-6 h-6" />
             বই ইস্যু করুন
           </button>
         </div>

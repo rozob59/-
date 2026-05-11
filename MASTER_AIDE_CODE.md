@@ -1,4 +1,5 @@
-# এআইডিই (AIDE) মাস্টার কোড গাইড - সম্পূর্ণ ফিক্স (WebView Method)
+# এআইডিই (AIDE) মাস্টার কোড গাইড - সর্বশেষ আপডেট (Native Notification Fix)
+> **সর্বশেষ আপডেট:** ১১ মে ২০২৬ (বিকেল ৮:৫৯)
 
 আপনার লগইন এরর ("Invalid action") এবং ফাইল নট ফাউন্ড ফিক্স করার জন্য নিচের কোডগুলো ব্যবহার করুন। আগের সব কোড ডিলিট করে এগুলো কপি-পেস্ট করুন।
 
@@ -385,22 +386,55 @@ public class MainActivity extends Activity {
     <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
         
         <section id="page-home" class="page flex flex-col items-center">
-            <div class="text-center py-12 md:py-24 max-w-3xl">
-                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-bold mb-6">
-                    <i data-lucide="sparkles" class="w-3 h-3"></i>
+            <!-- Hero Section -->
+            <div class="text-center py-16 md:py-28 max-w-4xl px-4">
+                <div class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-black uppercase tracking-widest mb-8 fade-in">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
                     সবচেয়ে বড় অনলাইন লাইব্রেরী কালেকশন
                 </div>
-                <h2 class="text-5xl md:text-7xl font-extrabold mb-8 tracking-tight leading-tight">
+                <h2 class="text-6xl md:text-8xl font-[900] mb-8 tracking-tighter leading-[0.95] text-white">
                     বই করুন সংগ্রহ <br/>
-                    <span class="text-teal-400">জ্ঞান হোক প্রসারিত</span>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400">জ্ঞান হোক প্রসারিত</span>
                 </h2>
-                <p class="text-lg md:text-xl text-slate-400 mb-10 leading-relaxed px-4">
+                <p class="text-lg md:text-xl text-slate-400 mb-12 leading-relaxed max-w-2xl mx-auto font-medium">
                     দক্ষিণ গোবধা পাবলিক লাইব্রেরী। এখন আপনার হাতের মুঠোয়। যেকোনো সময় যেকোনো জায়গা থেকে আপনার বই ট্র্যাক করুন।
                 </p>
-                <div class="flex flex-wrap justify-center gap-4">
-                    <button onclick="showPage('books')" class="gradient-teal text-slate-900 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:scale-105 transition-all">
+                <div class="flex flex-wrap justify-center gap-6">
+                    <button onclick="showPage('books')" class="gradient-teal text-slate-900 px-10 py-5 rounded-[2rem] font-black text-xl shadow-2xl shadow-teal-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
                         বইসমূহ দেখুন
+                        <i data-lucide="arrow-right" class="w-6 h-6"></i>
                     </button>
+                </div>
+            </div>
+
+            <!-- Features Grid -->
+            <div class="grid md:grid-cols-3 gap-6 w-full max-w-6xl px-4 pb-20">
+                <div class="glass-panel p-10 rounded-[3rem] border border-white/10 hover:bg-white/5 transition-all group">
+                    <div class="w-16 h-16 bg-teal-500/10 rounded-[1.5rem] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                        <i data-lucide="book" class="w-8 h-8 text-teal-400"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-4">বিশাল সংগ্রহ</h3>
+                    <p class="text-slate-400 leading-relaxed font-medium">
+                        আমাদের সংগ্রহে রয়েছে কয়েক হাজার বই যা আপনি যেকোনো সময় নিতে পারবেন।
+                    </p>
+                </div>
+                <div class="glass-panel p-10 rounded-[3rem] border border-white/10 hover:bg-white/5 transition-all group">
+                    <div class="w-16 h-16 bg-rose-500/10 rounded-[1.5rem] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                        <i data-lucide="bell" class="w-8 h-8 text-rose-400"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-4">স্মার্ট নোটিফিকেশন</h3>
+                    <p class="text-slate-400 leading-relaxed font-medium">
+                        বইয়ের ফেরত দেওয়ার সময় হলে বা নতুন নতুন বই আসলে অটোমেটিক আপডেট পান।
+                    </p>
+                </div>
+                <div class="glass-panel p-10 rounded-[3rem] border border-white/10 hover:bg-white/5 transition-all group">
+                    <div class="w-16 h-16 bg-emerald-500/10 rounded-[1.5rem] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                        <i data-lucide="history" class="w-8 h-8 text-emerald-400"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-4">সহজ ট্র্যাকিং</h3>
+                    <p class="text-slate-400 leading-relaxed font-medium">
+                        আপনি কবে কোন বই নিয়েছিলেন তার সব রেকর্ড আপনার হাতের মুঠোয়।
+                    </p>
                 </div>
             </div>
         </section>
@@ -432,10 +466,16 @@ public class MainActivity extends Activity {
                     <h2 class="text-4xl font-black text-white italic border-l-8 border-teal-500 pl-6">এডমিন প্যানেল</h2>
                     <p class="text-slate-400 mt-2 text-xs tracking-widest font-bold">লাইব্রেরী কন্ট্রোল সেন্টার</p>
                 </div>
-                <button onclick="openAddBookModal()" class="bg-teal-500 text-slate-900 px-6 py-3 rounded-2xl font-bold hover:bg-teal-400 transition-all flex items-center gap-2 shadow-xl shadow-teal-500/30">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
-                    নতুন বই যোগ করুন
-                </button>
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="openAddBookModal()" class="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center gap-2 shadow-xl">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-teal-400"></i>
+                        নতুন বই যোগ করুন
+                    </button>
+                    <button onclick="openIssueBookModal()" class="bg-teal-500 text-slate-900 px-6 py-3 rounded-2xl font-bold hover:bg-teal-400 transition-all flex items-center gap-2 shadow-xl shadow-teal-500/30">
+                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                        বই ইস্যু করুন
+                    </button>
+                </div>
             </div>
             
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
@@ -502,6 +542,28 @@ public class MainActivity extends Activity {
                 </div>
             </div>
         </div>
+
+        <div id="issueBookModal" class="hidden fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="glass-panel w-full max-w-md p-8 rounded-[2.5rem] relative">
+                <button onclick="closeIssueBookModal()" class="absolute top-6 right-6 text-slate-500 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <h3 class="text-2xl font-bold mb-6 italic border-l-4 border-teal-500 pl-4">বই ইস্যু করুন</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-teal-400 uppercase mb-2 ml-1">সদস্য নির্বাচন করুন</label>
+                        <select id="issueMemberSelect" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3.5 px-4 focus:outline-none text-white appearance-none">
+                            <option value="">সদস্য সিলেক্ট করুন</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-teal-400 uppercase mb-2 ml-1">বই নির্বাচন করুন</label>
+                        <select id="issueBookSelect" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3.5 px-4 focus:outline-none text-white appearance-none">
+                            <option value="">বই সিলেক্ট করুন</option>
+                        </select>
+                    </div>
+                    <button id="issueBtn" onclick="confirmIssueBook()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">ইস্যু নিশ্চিত করুন</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Custom Confirm Modal -->
@@ -549,6 +611,7 @@ public class MainActivity extends Activity {
         let currentUser = null;
         let isRegistering = false;
         let books = [];
+        let members = [];
 
         // টোস্ট নোটিফিকেশন সিস্টেম
         function showToast(message, type = 'success') {
@@ -740,6 +803,7 @@ public class MainActivity extends Activity {
             }, e => console.error("Books onSnapshot error:", e));
             
             onSnapshot(collection(db, 'members'), snap => {
+                members = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 document.getElementById('statTotalMembers').textContent = snap.size;
             }, e => console.error("Members onSnapshot error:", e));
 
@@ -1019,6 +1083,57 @@ public class MainActivity extends Activity {
         function openAddBookModal() { document.getElementById('addBookModal').classList.remove('hidden'); }
         function closeAddBookModal() { document.getElementById('addBookModal').classList.add('hidden'); }
 
+        function openIssueBookModal() {
+            const memberSelect = document.getElementById('issueMemberSelect');
+            const bookSelect = document.getElementById('issueBookSelect');
+            
+            memberSelect.innerHTML = '<option value="">সদস্য সিলেক্ট করুন</option>' + members.map(m => `<option value="${m.id}">${m.name} (${m.email})</option>`).join('');
+            bookSelect.innerHTML = '<option value="">বই সিলেক্ট করুন</option>' + books.filter(b => b.available).map(b => `<option value="${b.id}">${b.title} - ${b.author}</option>`).join('');
+            
+            document.getElementById('issueBookModal').classList.remove('hidden');
+        }
+        function closeIssueBookModal() { document.getElementById('issueBookModal').classList.add('hidden'); }
+
+        async function confirmIssueBook() {
+            const memberId = document.getElementById('issueMemberSelect').value;
+            const bookId = document.getElementById('issueBookSelect').value;
+            const btn = document.getElementById('issueBtn');
+
+            if(!memberId || !bookId) return showToast("সদস্য এবং বই উভয়ই সিলেক্ট করুন", "error");
+
+            btn.disabled = true;
+            btn.textContent = "ইস্যু হচ্ছে...";
+
+            try {
+                const book = books.find(b => b.id === bookId);
+                const member = members.find(m => m.id === memberId);
+                const dueDate = new Date(); 
+                dueDate.setDate(dueDate.getDate() + 14);
+
+                const batch = writeBatch(db);
+                const bRef = doc(collection(db, 'borrows'));
+                batch.set(bRef, {
+                    bookId, 
+                    bookTitle: book.title, 
+                    memberId, 
+                    memberName: member.name,
+                    borrowDate: serverTimestamp(), 
+                    dueDate: Timestamp.fromDate(dueDate), 
+                    status: 'active'
+                });
+                batch.update(doc(db, 'books', bookId), { available: false });
+                await batch.commit();
+
+                showToast(`"${book.title}" সফলভাবে ${member.name} কে ইস্যু করা হয়েছে!`, "success");
+                closeIssueBookModal();
+            } catch(e) {
+                showToast("ত্রুটি: " + e.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "ইস্যু নিশ্চিত করুন";
+            }
+        }
+
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
             if(!grid) return;
@@ -1093,6 +1208,9 @@ public class MainActivity extends Activity {
         window.borrowBook = borrowBook;
         window.openAddBookModal = openAddBookModal;
         window.closeAddBookModal = closeAddBookModal;
+        window.openIssueBookModal = openIssueBookModal;
+        window.closeIssueBookModal = closeIssueBookModal;
+        window.confirmIssueBook = confirmIssueBook;
         window.addNewBook = addNewBook;
         window.returnBook = returnBook;
         window.deleteBook = deleteBook;
