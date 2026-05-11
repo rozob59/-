@@ -866,6 +866,7 @@ public class MainActivity extends Activity {
             if(!confirmed) return;
 
             try {
+                // Get all notifications
                 const snap = await getDocs(collection(db, 'notifications'));
                 const batch = writeBatch(db);
                 snap.docs.forEach(d => batch.delete(d.ref));
