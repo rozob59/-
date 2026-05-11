@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Member, Book, BorrowRecord } from '../types';
 import { useAuth } from '../App';
@@ -18,6 +18,7 @@ export function AdminView() {
   const [selectedUser, setSelectedUser] = useState<Member | null>(null);
   const [showIssue, setShowIssue] = useState(false);
   const [showAddBook, setShowAddBook] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (!profile || profile.role !== 'admin') return;
@@ -37,6 +38,29 @@ export function AdminView() {
     return () => { unsubMembers(); unsubBooks(); unsubBorrows(); };
   }, [profile]);
 
+  const handleSystemReset = async () => {
+    if (!window.confirm('আপনি কি নিশ্চিত যে আপনি সব বই এবং লেন্ডিং হিস্ট্রি মুছে ফেলতে চান? শুধু ইউজার একাউন্টগুলো থাকবে।')) return;
+    
+    setResetting(true);
+    try {
+      // 1. Delete all borrows
+      const borrowsSnap = await getDocs(collection(db, 'borrows'));
+      const borrowDeletes = borrowsSnap.docs.map(d => deleteDoc(doc(db, 'borrows', d.id)));
+      
+      // 2. Delete all books
+      const booksSnap = await getDocs(collection(db, 'books'));
+      const bookDeletes = booksSnap.docs.map(d => deleteDoc(doc(db, 'books', d.id)));
+
+      await Promise.all([...borrowDeletes, ...bookDeletes]);
+      toast.success("সব হিস্ট্রি সফলভাবে ক্লিন করা হয়েছে!");
+    } catch (e) {
+      console.error(e);
+      toast.error("ডাটা ক্লিনিং করতে সমস্যা হয়েছে।");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (authLoading) return <div className="p-20 text-center text-white">অপেক্ষা করুন...</div>;
   if (!profile || profile.role !== 'admin') return <Navigate to="/" />;
 
@@ -48,6 +72,14 @@ export function AdminView() {
           <p className="text-slate-400 mt-2 uppercase text-xs tracking-widest font-bold">লাইব্রেরী ম্যানেজমেন্ট কন্ট্রোল সেন্টার</p>
         </div>
         <div className="flex flex-wrap md:flex-nowrap gap-4 w-full md:w-auto">
+          <button 
+            disabled={resetting}
+            onClick={handleSystemReset}
+            className="flex-1 md:flex-none border border-rose-500/30 text-rose-400 px-6 py-4 rounded-[2rem] font-bold hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            <Trash2 className="w-5 h-5" />
+            রিসেট ডাটা
+          </button>
           <button 
             onClick={() => setShowAddBook(true)}
             className="flex-1 md:flex-none bg-white/5 border border-white/10 text-white px-8 py-4 rounded-[2rem] font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-3 shadow-xl"

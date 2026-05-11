@@ -10,11 +10,12 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
-  signOut 
+  signOut,
+  sendPasswordResetEmail 
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, onSnapshot, limit } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
-import { Member, BorrowRecord, Notification as AppNotification } from './types';
+import { Member, BorrowRecord, AppNotification } from './types';
 import { Toaster, toast } from 'sonner';
 
 interface AuthContextType {
@@ -234,8 +235,28 @@ function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   if (!isOpen) return null;
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('অনুগ্রহ করে আগে ইমেইল এড্রেসটি লিখুন');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess('পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে।');
+    } catch (err: any) {
+      console.error(err);
+      setError('রিসেট লিংক পাঠানো সম্ভব হয়নি। ইমেইলটি সঠিক কিনা চেক করুন।');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -350,6 +371,18 @@ function AuthModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
           </div>
 
           {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+          {success && <p className="text-teal-400 text-xs text-center">{success}</p>}
+
+          {!isRegister && (
+            <div className="flex justify-end pr-1">
+              <button 
+                type="button" onClick={handleForgotPassword}
+                className="text-[10px] text-slate-500 hover:text-teal-400 font-medium transition-colors"
+              >
+                পাসওয়ার্ড ভুলে গেছেন?
+              </button>
+            </div>
+          )}
 
           <button
             type="submit" disabled={loading}

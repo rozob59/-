@@ -319,6 +319,10 @@ public class MainActivity extends Activity {
                     <input type="password" id="authPassword" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3.5 px-4 focus:outline-none focus:border-teal-500 transition-all text-white" placeholder="••••••••">
                 </div>
 
+                <div class="text-right">
+                    <button onclick="handleForgotPassword()" class="text-[10px] text-slate-500 hover:text-teal-400 font-bold transition-colors">পাসওয়ার্ড ভুলে গেছেন?</button>
+                </div>
+
                 <div class="pt-2">
                     <button id="authSubmitBtn" onclick="handleAuth()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all text-lg shadow-xl shadow-teal-500/10">
                         লগইন করুন
@@ -470,6 +474,10 @@ public class MainActivity extends Activity {
                     <p class="text-slate-400 mt-2 text-xs tracking-widest font-bold">লাইব্রেরী কন্ট্রোল সেন্টার</p>
                 </div>
                 <div class="flex flex-wrap gap-4">
+                    <button onclick="resetSystem()" class="bg-rose-500/10 border border-rose-500/30 text-rose-400 px-6 py-3 rounded-2xl font-bold hover:bg-rose-500 hover:text-white transition-all flex items-center gap-2 shadow-xl">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        রিসেট ডাটা
+                    </button>
                     <button onclick="openAddBookModal()" class="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center gap-2 shadow-xl">
                         <i data-lucide="plus-circle" class="w-5 h-5 text-teal-400"></i>
                         বই যোগ করুন
@@ -648,7 +656,7 @@ public class MainActivity extends Activity {
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, where, limit, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
@@ -810,6 +818,40 @@ public class MainActivity extends Activity {
                 showToast(msg, "error");
                 btn.disabled = false;
                 btn.textContent = isRegistering ? "একাউন্ট খুলুন" : "লগইন করুন";
+            }
+        }
+
+        async function handleForgotPassword() {
+            const email = document.getElementById('authEmail').value.trim();
+            if(!email) return showToast("আগে আপনার ইমেইলটি লিখুন", "error");
+            
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showToast("পাসওয়ার্ড রিসেট লিংক ইমেইলে পাঠানো হয়েছে।", "info");
+            } catch(e) {
+                console.error(e);
+                showToast("লিংক পাঠানো যায়নি। ইমেইলটি সঠিক কিনা চেক করুন।", "error");
+            }
+        }
+
+        async function resetSystem() {
+            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে সব বই এবং লেনদেন হিস্ট্রি মুছে ফেলতে চান? শুধু ইউজার একাউন্টগুলো থাকবে।");
+            if(!confirmed) return;
+            
+            showToast("ডাটা ক্লিন হচ্ছে...", "info");
+            try {
+                const borrowsSnap = await getDocs(collection(db, 'borrows'));
+                const booksSnap = await getDocs(collection(db, 'books'));
+                
+                const batch = writeBatch(db);
+                borrowsSnap.docs.forEach(d => batch.delete(d.ref));
+                booksSnap.docs.forEach(d => batch.delete(d.ref));
+                
+                await batch.commit();
+                showToast("সব ক্লিন হয়ে গেছে! এবার নতুন বই যোগ করুন।", "success");
+            } catch(e) {
+                console.error(e);
+                showToast("রিসেট করতে সমস্যা হয়েছে: "+e.message, "error");
             }
         }
 
@@ -1405,6 +1447,8 @@ public class MainActivity extends Activity {
         window.addNewBook = addNewBook;
         window.returnBook = returnBook;
         window.deleteBook = deleteBook;
+        window.handleForgotPassword = handleForgotPassword;
+        window.resetSystem = resetSystem;
 
     </script>
 </body>
