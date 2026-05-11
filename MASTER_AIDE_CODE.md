@@ -289,13 +289,7 @@ public class MainActivity extends Activity {
             <p class="mt-4 text-teal-400 font-medium pulse">লোডিং হচ্ছে...</p>
         </div>
     </div>
-    <script>
-        // Safety check to hide loading overlay if something goes wrong
-        window.addEventListener('load', () => { setTimeout(() => {
-            const loader = document.getElementById('loadingOverlay');
-            if (loader && !loader.classList.contains('hidden')) loader.classList.add('hidden');
-        }, 5000); });
-    </script>
+
 
     <!-- Auth Guard -->
     <div id="authGuard" class="hidden fixed inset-0 z-[90] bg-slate-950 flex items-center justify-center p-4">
