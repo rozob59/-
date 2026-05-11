@@ -155,7 +155,8 @@ function Navbar() {
               <div className="w-8 h-8 bg-teal-400 rounded-lg flex items-center justify-center shadow-lg shadow-teal-500/20">
                 <Library className="w-5 h-5 text-slate-900" />
               </div>
-              <span>Aide <span className="text-teal-400">Lib</span></span>
+              <span className="hidden lg:inline text-lg">দক্ষিণ গোবধা <span className="text-teal-400">পাবলিক লাইব্রেরী</span></span>
+              <span className="lg:hidden text-lg">DG <span className="text-teal-400">Library</span></span>
             </Link>
             <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
               <Link to="/books" className="text-slate-400 hover:text-teal-400 px-3 py-2 text-sm font-medium transition-colors">বইসমূহ</Link>
@@ -247,7 +248,7 @@ function Home() {
           transition={{ delay: 0.1 }}
           className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed"
         >
-          আপনার প্রিয় বই খুঁজে নিন এবং জ্ঞানচর্চায় মেতে উঠুন। Aide Library এখন আরও সহজ এবং আধুনিক।
+          আপনার প্রিয় বই খুঁজে নিন এবং জ্ঞানচর্চায় মেতে উঠুন। দক্ষিণ গোবধা পাবলিক লাইব্রেরী এখন আরও সহজ এবং আধুনিক।
         </motion.p>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
