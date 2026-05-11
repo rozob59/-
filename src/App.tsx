@@ -12,9 +12,9 @@ import {
   updateProfile,
   signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, onSnapshot, limit } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
-import { Member, BorrowRecord } from './types';
+import { Member, BorrowRecord, Notification as AppNotification } from './types';
 import { Toaster, toast } from 'sonner';
 
 interface AuthContextType {
@@ -429,10 +429,38 @@ import { NotificationsView } from './views/NotificationsView';
 import { MyBorrowsView } from './views/MyBorrowsView';
 
 function ReminderManager() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
-    if (!profile) return;
+    if (!user || !profile) return;
+
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Listener for new notifications
+    const qNotif = query(
+      collection(db, 'notifications'),
+      where('userId', 'in', [user.uid, 'all']),
+      limit(10) // Small limit for safety
+    );
+
+    const unsubscribe = onSnapshot(qNotif, (snap) => {
+      snap.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data() as AppNotification;
+          // Only show if it's new (created within last 30 seconds to avoid spam on initial load)
+          const createdAt = (data.createdAt as any)?.toDate?.() || new Date();
+          if (new Date().getTime() - createdAt.getTime() < 30000) {
+            toast.info(data.title, { description: data.message });
+            if (Notification.permission === 'granted') {
+              new Notification(data.title, { body: data.message });
+            }
+          }
+        }
+      });
+    });
 
     const checkReminders = async () => {
       try {
@@ -456,15 +484,19 @@ function ReminderManager() {
           if (dueDate.toDateString() === tomorrow.toDateString()) {
             const bookSnap = await getDoc(doc(db, 'books', data.bookId));
             const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
-            toast.info(`রিমাইন্ডার: "${bookTitle}" ফেরত দেওয়ার সময় আগামীকাল!`, {
-              duration: 10000,
-            });
+            const msg = `রিমাইন্ডার: "${bookTitle}" ফেরত দেওয়ার সময় আগামীকাল!`;
+            toast.info(msg, { duration: 10000 });
+            if (Notification.permission === 'granted') {
+              new Notification('লাইব্রেরী রিমাইন্ডার', { body: msg });
+            }
           } else if (dueDate <= now) {
              const bookSnap = await getDoc(doc(db, 'books', data.bookId));
              const bookTitle = bookSnap.exists() ? bookSnap.data().title : 'বইটি';
-             toast.error(`এলার্ট: "${bookTitle}" ফেরত দেওয়ার সময় পার হয়ে গেছে!`, {
-               duration: 15000,
-             });
+             const msg = `এলার্ট: "${bookTitle}" ফেরত দেওয়ার সময় পার হয়ে গেছে!`;
+             toast.error(msg, { duration: 15000 });
+             if (Notification.permission === 'granted') {
+               new Notification('লাইব্রেরী এলার্ট', { body: msg });
+             }
           }
         });
       } catch (e) {
@@ -473,7 +505,8 @@ function ReminderManager() {
     };
 
     checkReminders();
-  }, [profile]);
+    return () => unsubscribe();
+  }, [user, profile]);
 
   return null;
 }

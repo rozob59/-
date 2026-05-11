@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, updateDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { AppNotification } from '../types';
 import { useAuth } from '../App';
@@ -16,8 +16,7 @@ export function NotificationsView() {
 
     const q = query(
       collection(db, 'notifications'), 
-      where('userId', 'in', [user.uid, 'all']),
-      orderBy('createdAt', 'desc')
+      where('userId', 'in', [user.uid, 'all'])
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {

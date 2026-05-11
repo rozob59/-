@@ -14,6 +14,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -468,7 +469,7 @@ public class MainActivity extends Activity {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, collection, orderBy, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, query, collection, serverTimestamp, onSnapshot, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         // ফায়ারবেস কনফিগ
         const firebaseConfig = {
@@ -512,6 +513,18 @@ public class MainActivity extends Activity {
 
             container.appendChild(toast);
             lucide.createIcons();
+
+            // অ্যান্ড্রয়েড/ব্রাউজার নোটিফিকেশন (যদি পারমিশন থাকে)
+            if ("Notification" in window && Notification.permission === 'granted') {
+                try {
+                    new Notification('লাইব্রেরী আপডেট', { 
+                        body: message,
+                        icon: 'https://cdn-icons-png.flaticon.com/512/1903/1903162.png'
+                    });
+                } catch (e) {
+                    console.warn("Notification error:", e);
+                }
+            }
 
             // এনিমেশন স্টার্ট
             setTimeout(() => toast.classList.add('show'), 10);
@@ -579,6 +592,12 @@ public class MainActivity extends Activity {
                 } else {
                     await signInWithEmailAndPassword(auth, email, password);
                 }
+                
+                // নোটিফিকেশন পারমিশন চাওয়া
+                if ("Notification" in window) {
+                    Notification.requestPermission();
+                }
+
             } catch (e) {
                 console.error(e);
                 const errorCode = e.code || '';
@@ -640,6 +659,11 @@ public class MainActivity extends Activity {
                 }
 
                 loadBooks();
+                
+                // লগইন হওয়ার পর একবারও নোটিফিকেশন পারমিশন না চাইলে চাবে
+                if ("Notification" in window && Notification.permission === "default") {
+                    Notification.requestPermission();
+                }
             } else {
                 document.getElementById('authGuard').classList.remove('hidden');
             }
@@ -674,6 +698,20 @@ public class MainActivity extends Activity {
             // নোটিফিকেশন লিসেনার
             const qNotif = query(collection(db, 'notifications'), where('userId', 'in', [currentUser.uid, 'all']));
             onSnapshot(qNotif, snap => {
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added") {
+                        const n = change.doc.data();
+                        const time = n.createdAt?.seconds ? n.createdAt.seconds * 1000 : Date.now();
+                        // যদি নোটিফিকেশনটি গত ৩০ সেকেন্ডের মধ্যে হয়ে থাকে তবেই পপআপ দেখাবে
+                        if (Date.now() - time < 30000) {
+                            showToast(n.title, 'info');
+                            if ("Notification" in window && Notification.permission === 'granted') {
+                                new Notification(n.title, { body: n.message });
+                            }
+                        }
+                    }
+                });
+                
                 const notifs = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 renderNotifications(notifs);
                 const unread = notifs.filter(n => !n.read).length;
