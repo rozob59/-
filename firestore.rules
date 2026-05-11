@@ -42,20 +42,16 @@ service cloud.firestore {
     }
 
     match /borrows/{borrowId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       
-      // Forces users to query by their own memberId
-      allow list: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       
-      allow create: if isSignedIn() 
-        && request.resource.data.memberId == request.auth.uid
-        && getAfter(/databases/$(database)/documents/books/$(request.resource.data.bookId)).data.available == false;
+      allow create: if isAdmin();
       
       allow update: if isAdmin() || (
         isSignedIn() 
-        && resource.data.memberId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'actualReturnDate'])
-        && getAfter(/databases/$(database)/documents/books/$(resource.data.bookId)).data.available == true
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
       );
       
       allow delete: if isAdmin();

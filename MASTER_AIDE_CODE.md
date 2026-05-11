@@ -603,6 +603,7 @@ public class MainActivity extends Activity {
                     </div>
                     <input id="newBookTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="বইয়ের নাম *">
                     <input id="newBookAuthor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="লেখকের নাম *">
+                    <input id="newBookQuantity" type="number" min="1" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="মোট কপি (ডিফল্ট: ১) *">
                     <input id="newBookURL" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="অথবা ড্রপবক্স/গুগল ইমেজ লিংক">
                     <button onclick="addNewBook()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">বই সেভ করুন</button>
                 </div>
@@ -1119,6 +1120,16 @@ public class MainActivity extends Activity {
             lucide.createIcons();
         }
 
+        window.showNotificationDetailsSafe = function(id) {
+            const notif = notifications.find(n => n.id === id);
+            if (notif) {
+                showNotificationDetails(notif.title, notif.message);
+                if (!notif.read) {
+                    markAsRead(id);
+                }
+            }
+        };
+
         function renderNotifications(list) {
             const container = document.getElementById('notificationsList');
             if(!container) return;
@@ -1127,11 +1138,11 @@ public class MainActivity extends Activity {
                 return;
             }
             container.innerHTML = list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map(n => `
-                <div class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500'}">
-                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick='showNotificationDetails("${n.title}", "${n.message.replace(/"/g, "&quot;")}")'>
+                <div class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500 cursor-pointer'}">
+                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick="showNotificationDetailsSafe('${n.id}')">
                         <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-6 h-6 text-teal-400"></i>
                     </div>
-                    <div class="flex-1 cursor-pointer" onclick='showNotificationDetails("${n.title}", "${n.message.replace(/"/g, "&quot;")}")'>
+                    <div class="flex-1 cursor-pointer" onclick="showNotificationDetailsSafe('${n.id}')">
                         <div class="flex justify-between items-start mb-1">
                             <h5 class="font-bold text-white text-base">${n.title}</h5>
                             <span class="text-[10px] text-slate-500 font-medium">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
@@ -1139,7 +1150,7 @@ public class MainActivity extends Activity {
                         <p class="text-sm text-slate-400 leading-relaxed">${n.message}</p>
                     </div>
                     ${!n.read ? `
-                        <button onclick="markAsRead('${n.id}')" class="w-10 h-10 rounded-xl bg-slate-800 text-teal-500 flex items-center justify-center hover:bg-teal-500 hover:text-slate-950 transition-all shadow-lg active:scale-90">
+                        <button onclick="event.stopPropagation(); markAsRead('${n.id}')" class="w-10 h-10 rounded-xl bg-slate-800 text-teal-500 flex items-center justify-center hover:bg-teal-500 hover:text-slate-950 transition-all shadow-lg active:scale-90 z-10 relative">
                             <i data-lucide="check" class="w-6 h-6"></i>
                         </button>
                     ` : `
@@ -1263,12 +1274,15 @@ public class MainActivity extends Activity {
             let btn = null;
             allBtns.forEach(b => { if(b.textContent.includes('বই সেভ করুন')) btn = b; });
             
+            const qtyEl = document.getElementById('newBookQuantity');
+            
             const title = titleEl ? titleEl.value.trim() : "";
             const author = authorEl ? authorEl.value.trim() : "";
+            const quantity = qtyEl && qtyEl.value ? parseInt(qtyEl.value) : 1;
             let coverURL = urlEl ? urlEl.value.trim() : "";
             
-            if(!title || !author) {
-                showToast("দয়া করে বইয়ের নাম এবং লেখকের নাম সঠিকভাবে দিন।", "error");
+            if(!title || !author || quantity < 1) {
+                showToast("দয়া করে বইয়ের নাম, লেখকের নাম এবং বইয়ের সংখ্যা সঠিকভাবে দিন।", "error");
                 return;
             }
 
@@ -1288,7 +1302,9 @@ public class MainActivity extends Activity {
                     title: title, 
                     author: author, 
                     coverURL: coverURL || '', 
-                    available: true,
+                    totalQuantity: quantity,
+                    borrowedCount: 0,
+                    available: true, // Legacy support
                     createdAt: serverTimestamp() 
                 });
 
@@ -1327,9 +1343,16 @@ public class MainActivity extends Activity {
 
         async function returnBook(bid, bookId) {
             try {
+                const book = books.find(b => b.id === bookId);
+                const borrowed = book ? (book.borrowedCount || 1) : 1;
+                const newBorrowedCount = Math.max(0, borrowed - 1);
+                
                 const batch = writeBatch(db);
                 batch.update(doc(db, 'borrows', bid), { status: 'returned' });
-                batch.update(doc(db, 'books', bookId), { available: true });
+                batch.update(doc(db, 'books', bookId), { 
+                    borrowedCount: newBorrowedCount,
+                    available: true 
+                });
                 await batch.commit();
                 showToast("বই ফেরত নেওয়া হয়েছে", "success");
             } catch(e) { showToast(e.message, "error"); }
@@ -1386,6 +1409,16 @@ public class MainActivity extends Activity {
                 const book = books.find(b => b.id === bookId);
                 const member = members.find(m => m.id === memberId);
                 
+                const total = book.totalQuantity || 1;
+                const borrowed = book.borrowedCount || (book.available ? 0 : 1);
+                
+                if (total - borrowed <= 0) {
+                    showToast("দুঃখিত, এই বইটি বর্তমানে উপলব্ধ নেই।", "error");
+                    btn.disabled = false;
+                    btn.textContent = "ইস্যু নিশ্চিত করুন";
+                    return;
+                }
+                
                 const dueDate = new Date(returnDateStr);
                 // Set time to end of the day or something reasonable
                 dueDate.setHours(23, 59, 59, 999);
@@ -1395,14 +1428,21 @@ public class MainActivity extends Activity {
                 batch.set(bRef, {
                     bookId, 
                     bookTitle: book.title, 
-                    memberId, 
+                    memberId,
+                    userId: memberId, // For rules and queries
                     memberName: member.name,
                     borrowDate: serverTimestamp(), 
                     dueDate: Timestamp.fromDate(dueDate), 
                     status: 'active',
                     reminderSent: false
                 });
-                batch.update(doc(db, 'books', bookId), { available: false });
+                
+                const newBorrowedCount = borrowed + 1;
+                batch.update(doc(db, 'books', bookId), { 
+                    borrowedCount: newBorrowedCount,
+                    available: newBorrowedCount < total
+                });
+                
                 await batch.commit();
 
                 showToast(`"${book.title}" সফলভাবে ${member.name} কে ইস্যু করা হয়েছে!`, "success");
@@ -1519,26 +1559,34 @@ public class MainActivity extends Activity {
             // এডমিন চেক (Case Insensitive)
             const isAdmin = currentUser && currentUser.email && currentUser.email.toLowerCase() === 'rozobali01321786059@gmail.com';
             
-            grid.innerHTML = books.map(b => `
+            grid.innerHTML = books.map(b => {
+                const total = b.totalQuantity || 1;
+                const borrowed = b.borrowedCount || (b.available ? 0 : 1);
+                const isAvail = (total - borrowed) > 0;
+                
+                return `
                 <div class="glass-panel p-4 rounded-3xl flex flex-col h-full fade-in relative group">
                     ${isAdmin ? `
                         <button onclick="event.stopPropagation(); deleteBook('${b.id}')" class="absolute top-2 right-2 p-2 bg-rose-500/20 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all z-20 shadow-lg">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     ` : ''}
-                    <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden">
+                    <div class="aspect-[3/4] bg-slate-800 rounded-2xl mb-4 overflow-hidden relative">
                         ${b.coverURL ? `<img src="${b.coverURL}" class="w-full h-full object-cover" />` : '<div class="w-full h-full flex items-center justify-center italic text-xs text-slate-600">No Image</div>'}
+                        <div class="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur text-white px-2 py-1 flex items-center gap-1 rounded-md text-[10px] font-bold">
+                            <i data-lucide="layers" class="w-3 h-3"></i> ${total - borrowed}/${total}
+                        </div>
                     </div>
                     <h4 class="font-bold text-sm truncate">${b.title}</h4>
                     <p class="text-xs text-slate-500">${b.author}</p>
                     <div class="mt-auto pt-4 flex items-center justify-between">
-                        <div class="${b.available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} px-2 py-1 rounded-md text-[9px] font-bold uppercase">
-                            ${b.available ? 'AVAILABLE' : 'BORROWED'}
+                        <div class="${isAvail ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} px-2 py-1 rounded-md text-[9px] font-bold uppercase">
+                            ${isAvail ? 'AVAILABLE' : 'BORROWED'}
                         </div>
-                        ${b.available ? `` : ''}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
             lucide.createIcons();
         }
 
