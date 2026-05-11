@@ -81,9 +81,9 @@ public class MainActivity extends Activity {
         setContentView(R.layout.main);
 
         // অ্যান্ড্রয়েড ১৩+ এর জন্য নোটিফিকেশন পারমিশন চেক করা
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 101);
             }
         }
 
