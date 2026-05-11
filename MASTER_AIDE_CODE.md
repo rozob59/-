@@ -51,40 +51,78 @@
 </LinearLayout>
 ```
 
-### **৩. MainActivity.java**
-পাথ: `app/src/main/java/com/gobdha/library/MainActivity.java`
+### **৩. MainActivity.java (ফাইল আপলোড ফিক্স সহ)**
+পাথ: `app/src/main/java/com/gobdha.library/MainActivity.java`
 ```java
 package com.gobdha.library;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private ValueCallback<Uri[]> mUploadMessage;
+    private final static int FILECHOOSER_RESULTCODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main); // এখানে Layout ফাইলের নাম ঠিক থাকতে হবে
+        setContentView(R.layout.main);
 
         webView = (WebView) findViewById(R.id.myWebView);
         WebSettings webSettings = webView.getSettings();
 
-        // সব সেটিংস অন করুন যাতে ফায়ারবেস কাজ করে
+        // সব গুরুত্বপূর্ণ সেটিংস এনাবল করুন
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setUseWideViewPort(true);
 
         // অ্যাপ যাতে ব্রাউজারে চলে না যায়
         webView.setWebViewClient(new WebViewClient());
 
-        // ফাইল লোড করা (assets ফোল্ডারে index.html থাকতে হবে)
+        // ফাইল আপলোড ইভেন্ট হ্যান্ডল করার জন্য WebChromeClient যোগ করা হলো
+        webView.setWebChromeClient(new WebChromeClient() {
+            // অ্যান্ড্রয়েড ৫.০+ এর জন্য ফাইল পিকার ওপেন করা
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+                if (mUploadMessage != null) {
+                    mUploadMessage.onReceiveValue(null);
+                }
+                mUploadMessage = filePathCallback;
+
+                Intent intent = fileChooserParams.createIntent();
+                try {
+                    startActivityForResult(intent, FILECHOOSER_RESULTCODE);
+                } catch (Exception e) {
+                    mUploadMessage = null;
+                    return false;
+                }
+                return true;
+            }
+        });
+
+        // ওয়েবসাইট/লোকাল ফাইল লোড করা
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    // ফাইল পিকার থেকে রেজাল্ট ফিরে আসলে এটি কাজ করবে
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        if (requestCode == FILECHOOSER_RESULTCODE) {
+            if (mUploadMessage == null) return;
+            mUploadMessage.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, intent));
+            mUploadMessage = null;
+        }
     }
 
     @Override
@@ -555,7 +593,11 @@ public class MainActivity extends Activity {
             const titleEl = document.getElementById('newBookTitle');
             const authorEl = document.getElementById('newBookAuthor');
             const urlEl = document.getElementById('newBookURL');
-            const btn = document.querySelector('button[onclick="addNewBook()"]');
+            
+            // বাটন খোঁজার আরও শক্তিশালী উপায়
+            const allBtns = document.querySelectorAll('button');
+            let btn = null;
+            allBtns.forEach(b => { if(b.textContent.includes('বই সেভ করুন')) btn = b; });
             
             const title = titleEl ? titleEl.value.trim() : "";
             const author = authorEl ? authorEl.value.trim() : "";
@@ -573,11 +615,11 @@ public class MainActivity extends Activity {
             
             if(btn) {
                 btn.disabled = true;
-                btn.textContent = "সেভ হচ্ছে, দয়া করে অপেক্ষা করুন...";
+                btn.textContent = "সেভ হচ্ছে, অপেক্ষা করুন...";
             }
 
             try {
-                // সরাসরি Firebase addDoc ব্যবহার
+                // Firebase এ ডাটা সেভ করা
                 const docRef = await addDoc(collection(db, 'books'), { 
                     title: title, 
                     author: author, 
@@ -586,11 +628,10 @@ public class MainActivity extends Activity {
                     createdAt: serverTimestamp() 
                 });
                 
-                console.log("Document written with ID: ", docRef.id);
-                alert("অভিনন্দন! বইটি সফলভাবে লাইব্রেরীতে যোগ করা হয়েছে।");
+                alert("অভিনন্দন! বইটি সফলভাবে সেভ হয়েছে।");
                 closeAddBookModal();
                 
-                // ফরম রিসেট করা
+                // ফরম রিসেট
                 if(titleEl) titleEl.value = "";
                 if(authorEl) authorEl.value = "";
                 if(urlEl) urlEl.value = "";
@@ -601,8 +642,8 @@ public class MainActivity extends Activity {
                 }
                 lucide.createIcons();
             } catch(e) { 
-                console.error("Error adding book:", e);
-                alert("বই সেভ করতে সমস্যা হয়েছে: " + (e.message || "Unknown error")); 
+                console.error("Firestore Error:", e);
+                alert("সার্ভার সমস্যা: " + e.message); 
             } finally {
                 if(btn) {
                     btn.disabled = false;
