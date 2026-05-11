@@ -58,6 +58,7 @@
 package com.gobdha.library;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -69,16 +70,24 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.webkit.JavascriptInterface;
+import android.app.Notification;
 
 public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int FILECHOOSER_RESULTCODE = 1;
+    private static final String CHANNEL_ID = "library_notifs";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+
+        createNotificationChannel();
 
         // অ্যান্ড্রয়েড ১৩+ এর জন্য নোটিফিকেশন পারমিশন চেক করা
         if (Build.VERSION.SDK_INT >= 33) {
@@ -99,6 +108,9 @@ public class MainActivity extends Activity {
         webSettings.setUseWideViewPort(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
 
+        // জাভাস্ক্রিপ্ট ব্রিজ (Android.showNotification)
+        webView.addJavascriptInterface(new WebAppInterface(this), "Android");
+
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient() {
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
@@ -116,6 +128,48 @@ public class MainActivity extends Activity {
         });
 
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Library Notifications", NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("Notifications for library updates");
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.createNotificationChannel(channel);
+        }
+    }
+
+    // জাভা কোড যা জাভাস্ক্রিপ্ট থেকে কল করা যাবে
+    public class WebAppInterface {
+        Context mContext;
+        WebAppInterface(Context c) { mContext = c; }
+
+        @JavascriptInterface
+        public void showNotification(String title, String message) {
+            try {
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                Intent intent = new Intent(mContext, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                PendingIntent pendingIntent = PendingIntent.getActivity(mContext, (int)System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+                Notification.Builder builder;
+                if (Build.VERSION.SDK_INT >= 26) {
+                    builder = new Notification.Builder(mContext, CHANNEL_ID);
+                } else {
+                    builder = new Notification.Builder(mContext);
+                }
+
+                builder.setContentTitle(title)
+                       .setContentText(message)
+                       .setSmallIcon(android.R.drawable.ic_dialog_info) // সিস্টেম আইকন ব্যবহার করছি সেফটির জন্য
+                       .setContentIntent(pendingIntent)
+                       .setAutoCancel(true);
+
+                nm.notify((int) System.currentTimeMillis(), builder.build());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     // ফাইল পিকার থেকে রেজাল্ট ফিরে আসলে এটি কাজ করবে
@@ -301,7 +355,7 @@ public class MainActivity extends Activity {
             </div>
 
             <div class="flex items-center gap-4">
-                <div id="userProfile" class="flex items-center gap-3">
+                <div id="userProfile" class="flex items-center gap-4">
                     <div class="text-right hidden sm:block">
                         <p id="userNameLabel" class="text-xs font-semibold"></p>
                         <p id="userRoleLabel" class="text-[10px] text-slate-500 uppercase"></p>
@@ -517,7 +571,11 @@ public class MainActivity extends Activity {
             lucide.createIcons();
 
             // অ্যান্ড্রয়েড/ব্রাউজার নোটিফিকেশন (যদি পারমিশন থাকে)
-            if ("Notification" in window && Notification.permission === 'granted') {
+            console.log("Attempting notification:", message);
+            if (typeof Android !== 'undefined' && Android.showNotification) {
+                console.log("Calling Android Bridge...");
+                Android.showNotification('লাইব্রেরী আপডেট', message);
+            } else if ("Notification" in window && Notification.permission === 'granted') {
                 try {
                     new Notification('লাইব্রেরী আপডেট', { 
                         body: message,
@@ -706,8 +764,11 @@ public class MainActivity extends Activity {
                         const n = change.doc.data();
                         // যদি ডাটাবেজ থেকে ডাটা প্রথমবার লোড হবার পর নতুন কিছু এড হয়
                         if (!isInitialLoad) {
+                            console.log("New realtime notification:", n.title);
                             showToast(n.title, 'info');
-                            if ("Notification" in window && Notification.permission === 'granted') {
+                            if (typeof Android !== 'undefined' && Android.showNotification) {
+                                Android.showNotification(n.title, n.message);
+                            } else if ("Notification" in window && Notification.permission === 'granted') {
                                 new Notification(n.title, { body: n.message });
                             }
                         }
