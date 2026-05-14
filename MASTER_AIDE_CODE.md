@@ -479,6 +479,22 @@ public class MainActivity extends Activity {
 
         <section id="page-myBorrows" class="page hidden">
             <h2 class="text-3xl font-bold mb-8 italic border-l-4 border-amber-500 pl-4">আমার ধার নেওয়া বইসমূহ</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 fade-in">
+                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center border border-amber-500/20">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">মোট ধার করা বই</p>
+                    <p id="myStatTotal" class="text-3xl font-black text-white mt-1">০</p>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center border border-emerald-500/20">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">ফেরত দেওয়া বই</p>
+                    <p id="myStatReturned" class="text-3xl font-black text-emerald-400 mt-1">০</p>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center border border-sky-500/20">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">বর্তমানে আপনার কাছে আছে</p>
+                    <p id="myStatActive" class="text-3xl font-black text-sky-400 mt-1">০</p>
+                </div>
+            </div>
+
             <div id="myBorrowsList" class="grid sm:grid-cols-2 gap-4"></div>
         </section>
 
@@ -769,6 +785,7 @@ public class MainActivity extends Activity {
         let currentUser = null;
         let isRegistering = false;
         let books = [];
+        let filteredBooks = [];
         let members = [];
 
         // টোস্ট নোটিফিকেশন সিস্টেম
@@ -1021,7 +1038,10 @@ public class MainActivity extends Activity {
         async function loadBooks() {
             onSnapshot(collection(db, 'books'), snap => {
                 books = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                renderBooks();
+                
+                // Keep search input updated if user typed something
+                applySearchFilter();
+                
                 document.getElementById('statTotalBooks').textContent = books.length;
             }, e => console.error("Books onSnapshot error:", e));
             
@@ -1111,6 +1131,16 @@ public class MainActivity extends Activity {
         function renderMyBorrows(list) {
             const grid = document.getElementById('myBorrowsList');
             if(!grid) return;
+            
+            // Stats
+            const total = list.length;
+            const active = list.filter(b => b.status === 'active').length;
+            const returned = list.filter(b => b.status === 'returned').length;
+            
+            document.getElementById('myStatTotal').textContent = total;
+            document.getElementById('myStatActive').textContent = active;
+            document.getElementById('myStatReturned').textContent = returned;
+
             if(list.length === 0) {
                 grid.innerHTML = '<div class="col-span-full py-20 text-center text-slate-500 italic">আপনি কোনো বই ধার নেননি।</div>';
                 return;
@@ -1393,7 +1423,7 @@ public class MainActivity extends Activity {
                 const newBorrowedCount = Math.max(0, borrowed - 1);
                 
                 const batch = writeBatch(db);
-                batch.update(doc(db, 'borrows', bid), { status: 'returned' });
+                batch.update(doc(db, 'borrows', bid), { status: 'returned', returnDate: serverTimestamp() });
                 batch.update(doc(db, 'books', bookId), { 
                     borrowedCount: newBorrowedCount,
                     available: true 
@@ -1401,6 +1431,48 @@ public class MainActivity extends Activity {
                 await batch.commit();
                 showToast("বই ফেরত নেওয়া হয়েছে", "success");
             } catch(e) { showToast(e.message, "error"); }
+        }
+
+        async function handleBorrow(bookId) {
+            if (!currentUser) return showToast("প্রথমে লগইন করুন", "error");
+            const book = books.find(b => b.id === bookId);
+            if (!book) return;
+            
+            try {
+                const returnDate = new Date();
+                returnDate.setDate(returnDate.getDate() + 14); // 14 দিন সময়
+                returnDate.setHours(23, 59, 59, 999);
+
+                const batch = writeBatch(db);
+                
+                // Create borrow request
+                const bRef = doc(collection(db, 'borrows'));
+                batch.set(bRef, {
+                    bookId, 
+                    bookTitle: book.title, 
+                    memberId: currentUser.uid,
+                    userId: currentUser.uid,
+                    memberName: currentUser.displayName || 'Unknown',
+                    borrowDate: serverTimestamp(), 
+                    dueDate: Timestamp.fromDate(returnDate), 
+                    status: 'active'
+                });
+                
+                // Update book status
+                const currentBorrowed = book.borrowedCount || 0;
+                const newBorrowed = currentBorrowed + 1;
+                const total = book.totalQuantity || 1;
+                
+                batch.update(doc(db, 'books', bookId), { 
+                    borrowedCount: newBorrowed,
+                    available: newBorrowed < total 
+                });
+                
+                await batch.commit();
+                showToast("বই সফলভাবে ধার নেওয়া হয়েছে!", "success");
+            } catch(error) {
+                showToast("বই নিতে সমস্যা হয়েছে: " + error.message, "error");
+            }
         }
 
         async function deleteBook(id) {
@@ -1656,6 +1728,14 @@ public class MainActivity extends Activity {
             }
         }
 
+        function applySearchFilter() {
+            const val = (document.getElementById('bookSearch')?.value || "").toLowerCase();
+            filteredBooks = books.filter(b => b.title.toLowerCase().includes(val) || b.author.toLowerCase().includes(val));
+            renderBooks();
+        }
+
+        document.getElementById('bookSearch')?.addEventListener('input', applySearchFilter);
+
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
             if(!grid) return;
@@ -1663,7 +1743,7 @@ public class MainActivity extends Activity {
             // এডমিন চেক (Case Insensitive)
             const isAdmin = currentUser && currentUser.email && currentUser.email.toLowerCase() === 'rozobali01321786059@gmail.com';
             
-            grid.innerHTML = books.map(b => {
+            grid.innerHTML = filteredBooks.map(b => {
                 const total = b.totalQuantity || 1;
                 const borrowed = b.borrowedCount || (b.available ? 0 : 1);
                 const isAvail = (total - borrowed) > 0;
@@ -1692,6 +1772,9 @@ public class MainActivity extends Activity {
                         <div class="${isAvail ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} px-2 py-1 rounded-md text-[9px] font-bold uppercase">
                             ${isAvail ? 'AVAILABLE' : 'BORROWED'}
                         </div>
+                        ${isAvail && currentUser ? `
+                            <button onclick="event.stopPropagation(); handleBorrow('${b.id}')" class="text-teal-400 hover:text-white transition-all"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
+                        ` : ''}
                     </div>
                 </div>
                 `;
@@ -1722,6 +1805,7 @@ public class MainActivity extends Activity {
         window.openAddBookModal = openAddBookModal;
         window.closeAddBookModal = closeAddBookModal;
         window.openIssueBookModal = openIssueBookModal;
+        window.handleBorrow = handleBorrow;
         window.closeIssueBookModal = closeIssueBookModal;
         window.confirmIssueBook = confirmIssueBook;
         window.openAddMemberModal = openAddMemberModal;
