@@ -116,7 +116,12 @@ public class MainActivity extends Activity {
         // জাভাস্ক্রিপ্ট ব্রিজ (Android.showNotification)
         webView.addJavascriptInterface(new WebAppInterface(this), "Android");
 
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
+                handler.proceed(); // Ignore SSL certificate errors to allow CDNs to load on older devices
+            }
+        });
         webView.setWebChromeClient(new WebChromeClient() {
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
                 if (mUploadMessage != null) mUploadMessage.onReceiveValue(null);
