@@ -39,25 +39,21 @@ service cloud.firestore {
     match /books/{bookId} {
       allow read: if true;
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
+      allow update: if (isAdmin()) || (
         isSignedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['borrowedCount', 'available'])
       );
     }
 
     match /borrows/{borrowId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      
-      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      
-      allow create: if isAdmin();
-      
+      allow read: if isAdmin() || (isSignedIn() && (resource.data.memberId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.memberId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && (request.resource.data.memberId == request.auth.uid || request.resource.data.userId == request.auth.uid));
       allow update: if isAdmin() || (
         isSignedIn() 
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && (resource.data.memberId == request.auth.uid || resource.data.userId == request.auth.uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'returnDate'])
       );
-      
       allow delete: if isAdmin();
     }
 

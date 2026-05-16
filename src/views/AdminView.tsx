@@ -406,7 +406,7 @@ export function AdminView() {
 
 function AddBookModal({ onClose }: { onClose: () => void }) {
   const [formData, setFormData] = useState({
-    title: '', author: '', isbn: '', category: '', description: '', coverURL: '', quantity: 1
+    title: '', author: '', editor: '', isbn: '', category: '', description: '', coverURL: '', quantity: 1
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -528,6 +528,14 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
+              <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">সম্পাদক</label>
+              <input 
+                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+                value={formData.editor}
+                onChange={(e) => setFormData({...formData, editor: e.target.value})}
+              />
+            </div>
+            <div className="col-span-2">
               <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">মোট কপি *</label>
               <input 
                 required type="number" min="1"
@@ -564,7 +572,7 @@ function AddBookModal({ onClose }: { onClose: () => void }) {
 
 function EditBookModal({ book, onClose }: { book: Book, onClose: () => void }) {
   const [formData, setFormData] = useState({
-    title: book.title || '', author: book.author || '', isbn: book.isbn || '', category: book.category || '', description: book.description || '', coverURL: book.coverURL || '', quantity: book.totalQuantity || 1
+    title: book.title || '', author: book.author || '', editor: book.editor || '', isbn: book.isbn || '', category: book.category || '', description: book.description || '', coverURL: book.coverURL || '', quantity: book.totalQuantity || 1
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -669,6 +677,22 @@ function EditBookModal({ book, onClose }: { book: Book, onClose: () => void }) {
               />
             </div>
             <div>
+              <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">ক্যাটাগরি</label>
+              <input 
+                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+                value={formData.category}
+                onChange={(e) => setFormData({...formData, category: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">সম্পাদক</label>
+              <input 
+                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none text-white transition-all shadow-inner"
+                value={formData.editor}
+                onChange={(e) => setFormData({...formData, editor: e.target.value})}
+              />
+            </div>
+            <div className="col-span-2">
               <label className="block text-xs font-bold text-teal-400 uppercase mb-2 tracking-widest">মোট কপি *</label>
               <input 
                 required type="number" min="1"

@@ -628,6 +628,8 @@ public class MainActivity extends Activity {
                     </div>
                     <input id="newBookTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="বইয়ের নাম *">
                     <input id="newBookAuthor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="লেখকের নাম *">
+                    <input id="newBookCategory" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="ক্যাটাগরি">
+                    <input id="newBookEditor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="সম্পাদক">
                     <input id="newBookQuantity" type="number" min="1" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="মোট কপি (ডিফল্ট: ১) *">
                     <input id="newBookURL" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="অথবা ড্রপবক্স/গুগল ইমেজ লিংক">
                     <button onclick="addNewBook()" class="w-full gradient-teal text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl">বই সেভ করুন</button>
@@ -653,6 +655,8 @@ public class MainActivity extends Activity {
                     </div>
                     <input id="editBookTitle" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="বইয়ের নাম *">
                     <input id="editBookAuthor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="লেখকের নাম *">
+                    <input id="editBookCategory" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="ক্যাটাগরি">
+                    <input id="editBookEditor" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="সম্পাদক">
                     <input id="editBookQuantity" type="number" min="1" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="মোট কপি *">
                     <input id="editBookURL" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white" placeholder="অথবা ড্রপবক্স/গুগল ইমেজ লিংক">
                     <button onclick="updateBook()" class="w-full bg-amber-500 text-slate-900 py-4 rounded-2xl font-bold mt-4 shadow-xl hover:bg-amber-400 transition-colors">বই আপডেট করুন</button>
@@ -1070,26 +1074,39 @@ public class MainActivity extends Activity {
                 document.getElementById('statTotalBooks').textContent = books.length;
             }, e => console.error("Books onSnapshot error:", e));
             
-            onSnapshot(collection(db, 'members'), snap => {
-                members = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                document.getElementById('statTotalMembers').textContent = snap.size;
-                renderMembers();
-            }, e => console.error("Members onSnapshot error:", e));
+            if (role === 'admin') {
+                onSnapshot(collection(db, 'members'), snap => {
+                    members = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    document.getElementById('statTotalMembers').textContent = snap.size;
+                    renderMembers();
+                }, e => console.error("Members onSnapshot error:", e));
+            }
 
-            onSnapshot(collection(db, 'borrows'), snap => {
+            let borrowsQuery = collection(db, 'borrows');
+            if (role !== 'admin') {
+                borrowsQuery = query(collection(db, 'borrows'), where('memberId', '==', currentUser.uid));
+            }
+
+            onSnapshot(borrowsQuery, snap => {
                 const borrows = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                document.getElementById('statActiveBorrows').textContent = borrows.filter(b => b.status === 'active').length;
-                document.getElementById('statReturned').textContent = borrows.filter(b => b.status === 'returned').length;
-                renderBorrows(borrows);
+                if (role === 'admin') {
+                    document.getElementById('statActiveBorrows').textContent = borrows.filter(b => b.status === 'active').length;
+                    document.getElementById('statReturned').textContent = borrows.filter(b => b.status === 'returned').length;
+                    renderBorrows(borrows);
+                    runReminderManager(borrows);
+                } else {
+                    document.getElementById('statActiveBorrows').textContent = borrows.filter(b => b.status === 'active').length;
+                    document.getElementById('statReturned').textContent = borrows.filter(b => b.status === 'returned').length;
+                }
                 
                 // ইউজার ডেটা ফিল্টার
                 const myActive = borrows.filter(b => b.memberId === currentUser.uid);
                 renderMyBorrows(myActive);
                 checkReminders(myActive.filter(b => b.status === 'active'));
-                
-                // রান রিমাইন্ডার ম্যানেজার
-                runReminderManager(borrows);
-            }, e => console.error("Borrows onSnapshot error:", e));
+            }, e => {
+                console.error("Borrows onSnapshot error:", e);
+                showToast("বই নিতে সমস্যা হয়েছে: " + e.message, "error");
+            });
 
             // নোটিফিকেশন লিসেনার
             const qNotif = query(collection(db, 'notifications'), where('userId', 'in', [currentUser.uid, 'all']));
@@ -1113,6 +1130,7 @@ public class MainActivity extends Activity {
                 
                 isInitialLoad = false;
                 const notifs = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                window.notificationsState = notifs;
                 renderNotifications(notifs);
                 const unread = notifs.filter(n => !n.read).length;
                 
@@ -1202,7 +1220,7 @@ public class MainActivity extends Activity {
         }
 
         window.showNotificationDetailsSafe = function(id) {
-            const notif = notifications.find(n => n.id === id);
+            const notif = window.notificationsState?.find(n => n.id === id);
             if (notif) {
                 showNotificationDetails(notif.title, notif.message);
                 if (!notif.read) {
@@ -1219,11 +1237,11 @@ public class MainActivity extends Activity {
                 return;
             }
             container.innerHTML = list.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map(n => `
-                <div class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500 cursor-pointer'}">
-                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick="showNotificationDetailsSafe('${n.id}')">
+                <div onclick="showNotificationDetailsSafe('${n.id}')" class="glass-panel p-6 rounded-[2rem] flex gap-5 items-center transition-all cursor-pointer ${n.read ? 'opacity-50 grayscale-[0.5]' : 'border-l-4 border-teal-500'}">
+                    <div class="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center flex-shrink-0">
                         <i data-lucide="${n.userId === 'all' ? 'megaphone' : 'bell'}" class="w-6 h-6 text-teal-400"></i>
                     </div>
-                    <div class="flex-1 cursor-pointer" onclick="showNotificationDetailsSafe('${n.id}')">
+                    <div class="flex-1">
                         <div class="flex justify-between items-start mb-1">
                             <h5 class="font-bold text-white text-base">${n.title}</h5>
                             <span class="text-[10px] text-slate-500 font-medium">${n.createdAt ? new Date(n.createdAt.seconds*1000).toLocaleDateString('bn-BD') : ''}</span>
@@ -1367,6 +1385,8 @@ public class MainActivity extends Activity {
         async function addNewBook() {
             const titleEl = document.getElementById('newBookTitle');
             const authorEl = document.getElementById('newBookAuthor');
+            const categoryEl = document.getElementById('newBookCategory');
+            const editorEl = document.getElementById('newBookEditor');
             const urlEl = document.getElementById('newBookURL');
             
             // বাটন খোঁজার আরও শক্তিশালী উপায়
@@ -1378,6 +1398,8 @@ public class MainActivity extends Activity {
             
             const title = titleEl ? titleEl.value.trim() : "";
             const author = authorEl ? authorEl.value.trim() : "";
+            const category = categoryEl ? categoryEl.value.trim() : "";
+            const editor = editorEl ? editorEl.value.trim() : "";
             const quantity = qtyEl && qtyEl.value ? parseInt(qtyEl.value) : 1;
             let coverURL = urlEl ? urlEl.value.trim() : "";
             
@@ -1400,7 +1422,9 @@ public class MainActivity extends Activity {
                 // Firebase এ ডাটা সেভ করা
                 const docRef = await addDoc(collection(db, 'books'), { 
                     title: title, 
-                    author: author, 
+                    author: author,
+                    category: category,
+                    editor: editor,
                     coverURL: coverURL || '', 
                     totalQuantity: quantity,
                     borrowedCount: 0,
@@ -1525,6 +1549,8 @@ public class MainActivity extends Activity {
             document.getElementById('editBookId').value = book.id;
             document.getElementById('editBookTitle').value = book.title;
             document.getElementById('editBookAuthor').value = book.author;
+            document.getElementById('editBookCategory').value = book.category || '';
+            document.getElementById('editBookEditor').value = book.editor || '';
             document.getElementById('editBookQuantity').value = book.totalQuantity || 1;
             document.getElementById('editBookURL').value = book.coverURL || '';
             
@@ -1544,6 +1570,8 @@ public class MainActivity extends Activity {
             const id = document.getElementById('editBookId').value;
             const title = document.getElementById('editBookTitle').value.trim();
             const author = document.getElementById('editBookAuthor').value.trim();
+            const category = document.getElementById('editBookCategory').value.trim();
+            const editor = document.getElementById('editBookEditor').value.trim();
             const quantity = parseInt(document.getElementById('editBookQuantity').value) || 1;
             let coverURL = document.getElementById('editBookURL').value.trim();
             
@@ -1559,13 +1587,15 @@ public class MainActivity extends Activity {
             const book = books.find(b => b.id === id);
             if (!book) return;
             
-            t= book.borrowedCount || (book.available ? 0 : 1);
+            let t= book.borrowedCount || (book.available === false ? 1 : 0);
             let available = quantity > t;
 
             try {
                 await updateDoc(doc(db, 'books', id), {
                     title: title,
                     author: author,
+                    category: category,
+                    editor: editor,
                     coverURL: coverURL,
                     totalQuantity: quantity,
                     available: available
