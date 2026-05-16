@@ -82,6 +82,30 @@ export function AdminView() {
     }
   };
 
+  const handleDeleteAllUsers = async () => {
+    if (!window.confirm('আপনি কি নিশ্চিত যে সব সদস্য (আপনার নিজের অ্যাকাউন্ট বাদে) ডাটাবেজ থেকে মুছে ফেলতে চান?')) return;
+    
+    setResetting(true);
+    try {
+      const snap = await getDocs(collection(db, 'members'));
+      const batch = writeBatch(db);
+      snap.docs.forEach(d => {
+        if (d.data().email !== profile?.email && d.data().role !== 'admin') {
+          batch.delete(d.ref);
+        }
+      });
+      await batch.commit();
+      toast.success("সব সদস্য ডাটাবেজ থেকে মুছে ফেলা হয়েছে!");
+      alert("সদস্যদের মুছে ফেলা হয়েছে। তবে তাদের গুগল এক্সেস রিমুভ করতে আপনার ফায়ারবেস কনসোলের 'Authentication' সেকশন থেকেও ইউজারগুলো ডিলিট করতে হবে।");
+    } catch (e) {
+      console.error(e);
+      toast.error("সদস্য মুছতে সমস্যা হয়েছে।");
+      handleFirestoreError(e, OperationType.WRITE, 'members');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (authLoading) return <div className="p-20 text-center text-white">অপেক্ষা করুন...</div>;
   if (!profile || profile.role !== 'admin') return <Navigate to="/" />;
 
@@ -96,10 +120,18 @@ export function AdminView() {
           <button 
             disabled={resetting}
             onClick={handleSystemReset}
-            className="flex-1 md:flex-none border border-rose-500/30 text-rose-400 px-6 py-4 rounded-[2rem] font-bold hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+            className="flex-1 md:flex-none bg-[rgba(244,63,94,0.1)] border border-rose-500/30 text-rose-400 px-6 py-4 rounded-[2rem] font-bold hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
           >
             <Trash2 className="w-5 h-5" />
             রিসেট ডাটা
+          </button>
+          <button 
+            disabled={resetting}
+            onClick={handleDeleteAllUsers}
+            className="flex-1 md:flex-none border bg-[rgba(249,115,22,0.1)] border-orange-500/30 text-orange-400 px-6 py-4 rounded-[2rem] font-bold hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            <Users className="w-5 h-5" />
+            সব সদস্য মুছুন
           </button>
           <button 
             disabled={resetting}
@@ -180,12 +212,31 @@ export function AdminView() {
                             {member.role}
                           </span>
                         </td>
-                        <td className="px-8 py-5 text-right">
+                        <td className="px-8 py-5 text-right flex justify-end gap-2">
                           <button 
                             onClick={() => { setSelectedUser(member); setShowNotify(true); }}
                             className="w-10 h-10 rounded-xl bg-white/5 inline-flex items-center justify-center text-slate-400 hover:bg-teal-500 hover:text-slate-900 transition-all hover:scale-110 active:scale-95 shadow-lg"
+                            title="বার্তা পাঠান"
                           >
                             <Send className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (window.confirm('আপনি কি নিশ্চিত যে এই সদস্যকে মুছে ফেলতে চান?')) {
+                                try {
+                                  await deleteDoc(doc(db, 'members', member.id));
+                                  toast.success("সদস্যকে ডাটাবেজ থেকে মুছে ফেলা হয়েছে!");
+                                } catch(e) {
+                                  console.error(e);
+                                  toast.error("সদস্য মুছতে সমস্যা হয়েছে!");
+                                  handleFirestoreError(e, OperationType.DELETE, `members/${member.id}`);
+                                }
+                              }
+                            }}
+                            className="w-10 h-10 rounded-xl bg-white/5 inline-flex items-center justify-center text-slate-400 hover:bg-rose-500 hover:text-white transition-all hover:scale-110 active:scale-95 shadow-lg"
+                            title="সদস্য মুছুন"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>

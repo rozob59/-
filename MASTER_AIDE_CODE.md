@@ -524,6 +524,10 @@ public class MainActivity extends Activity {
                         <i data-lucide="trash-2" class="w-5 h-5"></i>
                         রিসেট ডাটা
                     </button>
+                    <button onclick="deleteAllUsers()" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-6 py-3 rounded-2xl font-bold hover:bg-amber-500 hover:text-white transition-all flex items-center gap-2 shadow-xl">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                        সব সদস্য মুছুন
+                    </button>
                     <button onclick="clearNotifications()" class="bg-orange-500/10 border border-orange-500/30 text-orange-400 px-6 py-3 rounded-2xl font-bold hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2 shadow-xl">
                         <i data-lucide="trash-2" class="w-5 h-5"></i>
                         নোটিফিকেশন ক্লিয়ার
@@ -974,11 +978,6 @@ public class MainActivity extends Activity {
                 const snap = await getDocs(collection(db, 'notifications'));
                 console.log("Notifications found to delete:", snap.docs.length);
                 
-                if (snap.docs.length === 0) {
-                  showToast("কোনো নোটিফিকেশন নেই।", "info");
-                  return;
-                }
-                
                 // Firestore batch limit is 500
                 const batch = writeBatch(db);
                 let count = 0;
@@ -993,6 +992,27 @@ public class MainActivity extends Activity {
             } catch (e) {
                 console.error("Error clearing notifications:", e);
                 showToast("নোটিফিকেশনগুলো মুছতে সমস্যা হয়েছে: " + (e instanceof Error ? e.message : String(e)));
+            }
+        }
+
+        async function deleteAllUsers() {
+            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে সব সদস্য (আপনার নিজের অ্যাকাউন্ট বাদে) মুছে ফেলতে চান?");
+            if(!confirmed) return;
+            
+            showToast("সদস্য ডিলিট করা হচ্ছে...", "info");
+            try {
+                const snap = await getDocs(collection(db, 'members'));
+                const b = writeBatch(db);
+                snap.docs.forEach(d => {
+                    if (d.data().email !== currentUser.email && d.data().role !== 'admin') {
+                        b.delete(d.ref);
+                    }
+                });
+                await b.commit();
+                showToast("সব সদস্য মুছে ফেলা হয়েছে! তবে লগইন পুরোপুরি বন্ধ করতে ফায়ারবেস কনসোল থেকে ডিলিট করতে হবে।", "success");
+            } catch(e) {
+                console.error(e);
+                showToast("সদস্য মুছতে সমস্যা হয়েছে: " + e.message, "error");
             }
         }
 
@@ -1655,14 +1675,30 @@ public class MainActivity extends Activity {
                             ${m.role || 'member'}
                         </span>
                     </td>
-                    <td class="px-8 py-4">
-                        <button onclick='openNotifyModal("${m.id}", "${(m.name || "").replace(/"/g, "&quot;")}")' class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center hover:bg-teal-500 hover:text-slate-900 transition-all">
+                    <td class="px-8 py-4 flex gap-2">
+                        <button onclick='openNotifyModal("${m.id}", "${(m.name || "").replace(/"/g, "&quot;")}")' class="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center hover:bg-teal-500 hover:text-slate-900 transition-all" title="বার্তা পাঠান">
                             <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick='deleteMember("${m.id}")' class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all" title="মুছে ফেলুন">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     </td>
                 </tr>
             `).join('');
             lucide.createIcons();
+        }
+
+        async function deleteMember(id) {
+            const confirmed = await customConfirm("আপনি কি নিশ্চিত যে এই সদস্যকে মুছে ফেলতে চান?");
+            if(!confirmed) return;
+            
+            try {
+                // Delete user's borrows as well? Better not, just delete the member. Let books borrows be dangling or we can check... well we'll just delete the member.
+                await deleteDoc(doc(db, 'members', id));
+                showToast("সদস্যকে সফলভাবে ডাটাবেজ থেকে মুছে ফেলা হয়েছে! তবে লগইন পুরোপুরি বন্ধ করতে ফায়ারবেস কনসোল (Authentication) থেকে ডিলিট করতে হবে।", "success");
+            } catch(e) {
+                showToast("সদস্য মুছতে সমস্যা হয়েছে: " + e.message, "error");
+            }
         }
 
         let selectedUserForNotif = null;
@@ -1828,6 +1864,8 @@ public class MainActivity extends Activity {
         window.updateBook = updateBook;
         window.returnBook = returnBook;
         window.deleteBook = deleteBook;
+        window.deleteMember = deleteMember;
+        window.deleteAllUsers = deleteAllUsers;
         window.handleForgotPassword = handleForgotPassword;
         window.resetSystem = resetSystem;
         window.clearNotifications = clearNotifications;
